@@ -191,6 +191,14 @@ async function formatMessageToMarkdown(
   const splitter = "ー".repeat(40);
   const username = message.user ? await getUserName(message.user) : "No Name";
   const timestamp = new Date(Number(message.ts) * 1000);
+  let messageUrl = `https://ut-naelab.slack.com/archives/${channelId}/p${message.ts?.replace(
+    ".",
+    ""
+  )}`;
+  if (message.parent_user_id) {
+    // スレッドの場合
+    messageUrl += `?thread_ts=${message.thread_ts}&cid=${channelId}`;
+  }
 
   let messageText = message.text ?? "";
 
@@ -217,10 +225,7 @@ async function formatMessageToMarkdown(
 
   const formattedMessage = `${splitter}
 
-${indentStr}**${username}** [${timestamp.toLocaleTimeString()}](https://ut-naelab.slack.com/archives/${channelId}/p${message.ts?.replace(
-    ".",
-    ""
-  )})
+${indentStr}**${username}** [${timestamp.toLocaleTimeString()}](${messageUrl})
 
 ${indentStr}${messageText ?? ""}
 
