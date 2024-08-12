@@ -5,7 +5,7 @@ dotenv.config({
 
 import process from "process";
 import { WebClient } from "@slack/web-api";
-import * as emoji from "node-emoji";
+import uEmojiParser from "universal-emoji-parser";
 
 import { args } from "./args";
 import {
@@ -13,6 +13,7 @@ import {
   MessageElement,
 } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 import { Reaction } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
+import { PurpleElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 
 // Replace 'YOUR_CHANNEL_ID' with the actual channel ID and 'YOUR_TOKEN' with your Slack API token
 const token = process.env.SLACK_API_TOKEN;
@@ -44,6 +45,24 @@ async function retrieveMessages(
   return { messages, result };
 }
 
+async function retrieveThreadMessages(
+  channelId: string,
+  threadTs: string
+): Promise<MessageElement[]> {
+  let messages: MessageElement[] = [];
+  let result = await client.conversations.replies({
+    channel: channelId,
+    ts: threadTs,
+    limit: 1000,
+  });
+
+  if (result.ok && result.messages) {
+    messages = result.messages;
+  }
+
+  return messages;
+}
+
 async function getUserName(userId: string) {
   const userInfo = await client.users.info({
     user: userId,
@@ -54,6 +73,22 @@ async function getUserName(userId: string) {
     userInfo.user?.real_name ||
     userInfo.user?.profile?.display_name
   );
+}
+
+async function replaceMenthionToUserName(text: string) {
+  const mentionRegex = /<@([A-Z0-9]+)>/g;
+  const mentions = text.match(mentionRegex);
+  if (mentions) {
+    for (const mention of mentions) {
+      const userId = mention.replace(/<@|>/g, "");
+      const userName = await getUserName(userId);
+      text = text.replace(
+        mention,
+        `<span class="underline">@${userName}</span>` ?? ""
+      );
+    }
+  }
+  return text;
 }
 
 async function fetchChannelMessages(channelId: string, date?: string) {
@@ -109,6 +144,23 @@ async function exportForMAXQDAPreprocessor(
       0
     );
     console.log(formattedMessage);
+
+    if (message.reply_count) {
+      const threadMessages = await retrieveThreadMessages(
+        args.channelId,
+        message.thread_ts ?? ""
+      );
+
+      for (let i = 1; i < threadMessages.length; i++) {
+        // 0番目は親メッセージなのでスキップ
+        const formattedThreadMessage = await formatMessageForMAXQDAPreprocessor(
+          threadMessages[i],
+          args.channelId,
+          1
+        );
+        console.log(formattedThreadMessage);
+      }
+    }
   }
 }
 
@@ -118,10 +170,8 @@ async function formatMessageForMAXQDAPreprocessor(
   indent: number
 ) {
   const username = message.user ? await getUserName(message.user) : "No Name";
-  const splitter = "ー".repeat(40);
 
-  const formattedMessage = `${splitter}
-  
+  const formattedMessage = `  
 #SPEAKER ${username}
 
 ${await formatMessageToMarkdown(message, channelId, indent)}
@@ -137,16 +187,42 @@ async function formatMessageToMarkdown(
   channelId: string,
   indent: number
 ) {
-  const indentStr = "\t|".repeat(indent);
+  const indentStr = "> ".repeat(indent);
+  const splitter = "ー".repeat(40);
   const username = message.user ? await getUserName(message.user) : "No Name";
   const timestamp = new Date(Number(message.ts) * 1000);
 
-  const formattedMessage = `${indentStr}${username} [${timestamp.toLocaleTimeString()}](https://ut-naelab.slack.com/archives/${channelId}/p${message.ts?.replace(
+  let messageText = message.text ?? "";
+
+  if (!messageText) {
+    for (const block of message.blocks ?? []) {
+      if (block.type === "rich_text") {
+        for (const element of block.elements ?? []) {
+          if (element.type === "rich_text_section") {
+            for (const text of element.elements ?? []) {
+              messageText += (text as PurpleElement).text ?? "";
+            }
+          }
+        }
+      }
+    }
+
+    for (const attachment of message.attachments ?? []) {
+      messageText += attachment.text;
+    }
+  }
+
+  messageText = await replaceMenthionToUserName(messageText);
+  messageText = messageText.replace(/\n/g, `\n${indentStr}`);
+
+  const formattedMessage = `${splitter}
+
+${indentStr}**${username}** [${timestamp.toLocaleTimeString()}](https://ut-naelab.slack.com/archives/${channelId}/p${message.ts?.replace(
     ".",
     ""
   )})
 
-${indentStr}${message.text?.replace(/\n/g, `\n\n${indentStr}`) ?? ""}
+${indentStr}${messageText ?? ""}
 
 ${indentStr}${await formatReactionsToMarkdown(message.reactions ?? [])}
 
@@ -169,7 +245,8 @@ async function formatReactionsToMarkdown(reactions: Reaction[]) {
         : "";
       const emojiText =
         !reaction.url && reaction.name
-          ? emoji.get(reaction.name) || `:${reaction.name}:`
+          ? uEmojiParser.parseToUnicode(`:${reaction.name}:`) ||
+            `:${reaction.name}:`
           : `:${reaction.name}:`;
       return `${emojiText} ${reactionImage} ${userInfo}`;
     })
@@ -178,6 +255,7 @@ async function formatReactionsToMarkdown(reactions: Reaction[]) {
 
 async function main() {
   const messages = await fetchChannelMessages(args.channelId, args.date);
+  messages?.reverse(); // 古いメッセージから出力するために逆順にする
   if (messages) {
     await exportForMAXQDAPreprocessor(messages, args.date ?? "");
   }

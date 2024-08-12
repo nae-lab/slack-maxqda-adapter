@@ -20,6 +20,9 @@ importers:
       node-emoji:
         specifier: ^2.1.3
         version: 2.1.3
+      universal-emoji-parser:
+        specifier: ^2.0.11
+        version: 2.0.11
       yargs:
         specifier: ^17.7.2
         version: 17.7.2
@@ -80,6 +83,9 @@ packages:
 
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
+
+  '@twemoji/parser@15.1.1':
+    resolution: {integrity: sha512-CChRzIu6ngkCJOmURBlYEdX5DZSu+bBTtqR60XjBkFrmvplKW7OQsea+i8XwF4bLVlUXBO7ZmHhRPDzfQyLwwg==}
 
   '@types/node@22.1.0':
     resolution: {integrity: sha512-AOmuRF0R2/5j1knA3c6G3HOk523Ga+l+ZXltX8SF1+5oqcXijjfTd8fY3XRZqSihEu9XhtQnKYLmkFaoxgsJHw==}
@@ -281,6 +287,9 @@ packages:
     resolution: {integrity: sha512-yLSH4py7oFH3oG/9K+XWrz1pSi3dfUrWEnInbxMfArOfc1+33BlGPQtLsOYwvdMy11AwUBetYuaRxSPqgkq+8g==}
     engines: {node: '>=4'}
 
+  universal-emoji-parser@2.0.11:
+    resolution: {integrity: sha512-DfuoOMIkFfDOuQo7dF1bbfcjzs5KRcwI4U3iqdJsn1Dt2voJ6ljMnA1gYZqVtCogDchgc5/wJtWE6B1uc13QUw==}
+
   v8-compile-cache-lib@3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
 
@@ -351,6 +360,8 @@ snapshots:
   '@tsconfig/node14@1.0.3': {}
 
   '@tsconfig/node16@1.0.4': {}
+
+  '@twemoji/parser@15.1.1': {}
 
   '@types/node@22.1.0':
     dependencies:
@@ -516,6 +527,10 @@ snapshots:
   undici-types@6.13.0: {}
 
   unicode-emoji-modifier-base@1.0.0: {}
+
+  universal-emoji-parser@2.0.11:
+    dependencies:
+      '@twemoji/parser': 15.1.1
 
   v8-compile-cache-lib@3.0.1: {}
 

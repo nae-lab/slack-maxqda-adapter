@@ -135,3 +135,5 @@ dist
 *.pdf
 *.html
 *.txt
+*.md
+!README.md
