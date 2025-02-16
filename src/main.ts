@@ -295,7 +295,7 @@ async function formatMessageToMarkdown(
 
   const formattedMessage = `${splitter}
 
-${indentStr}**${username}** [${timestamp.toLocaleTimeString()}](${messageUrl})
+${indentStr}**${username}** [${timestamp.toLocaleString()}](${messageUrl})
 
 ${indentStr}${messageText ?? ""}
 
