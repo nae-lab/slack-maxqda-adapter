@@ -137,3 +137,4 @@ dist
 *.txt
 *.md
 !README.md
+!README.ja.md
