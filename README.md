@@ -1,6 +1,26 @@
 # Slack to MAXQDA Adapter
 
-Example usage:
+日本語 [README.ja.md](./README.ja.md).
+
+## Setup
+- Install dependencies with:
+  ```sh
+  pnpm install
+  ```
+- Create a `.env` file in the project root with your Slack API token:
+  ```
+  SLACK_API_TOKEN=your_slack_api_token
+  ```
+- Ensure pandoc is installed on your system.
+
+## Tool Details
+This tool retrieves Slack messages from a specified channel and date range. It:
+- Queries the Slack API for messages.
+- Saves daily messages as markdown files in the `out` directory.
+- Concatenates all daily files into a single `slack-log.md` file.
+- Converts the markdown file to a DOCX file using pandoc for import into MAXQDA.
+
+## Usage Example
 
 ```sh
 ./fetch_messages.sh 2024-08-13 2024-09-05
