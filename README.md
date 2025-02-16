@@ -3,9 +3,9 @@
 Example usage:
 
 ```sh
-for d in (seq 13 31); pnpm main -c CXOXOXOXOXO -d 2024-08-(printf "%02d" $d) > out/2024-08-(printf "%02d" $d).md; end
-cat out/* > out/slack-log.md
-pandoc -i out/slack-log.md -o out/slack-log.docx
+./fetch_messages.sh 2024-08-13 2024-09-05
 ```
+
+This script retrieves messages for a multi-month range, concatenates the daily output into out/slack-log.md, and converts it to out/slack-log.docx using pandoc.
 
 You would import the resulting `out/slack-log.docx` into MAXQDA using preprocessor feature.

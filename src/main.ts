@@ -84,7 +84,7 @@ async function replaceMenthionToUserName(text: string) {
       const userName = await getUserName(userId);
       text = text.replace(
         mention,
-        `<span class="underline">@${userName}</span>` ?? ""
+        `<span class="underline">@${userName}</span>`
       );
     }
   }
@@ -260,10 +260,12 @@ async function formatReactionsToMarkdown(reactions: Reaction[]) {
 
 async function main() {
   const messages = await fetchChannelMessages(args.channelId, args.date);
-  messages?.reverse(); // 古いメッセージから出力するために逆順にする
-  if (messages) {
-    await exportForMAXQDAPreprocessor(messages, args.date ?? "");
+  if (!messages || messages.length === 0) {
+    // No messages to process, output nothing.
+    return;
   }
+  messages.reverse(); // 古いメッセージから出力するために逆順にする
+  await exportForMAXQDAPreprocessor(messages, args.date ?? "");
 }
 
 main();
