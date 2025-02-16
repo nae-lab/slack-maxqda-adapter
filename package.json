@@ -9,7 +9,7 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e",
+  "packageManager": "pnpm@10.4.0+sha512.6b849d0787d97f8f4e1f03a9b8ff8f038e79e153d6f11ae539ae7c435ff9e796df6a862c991502695c7f9e8fac8aeafc1ac5a8dab47e36148d183832d886dd52",
   "devDependencies": {
     "@types/node": "^22.1.0",
     "@types/yargs": "^17.0.32",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@slack/web-api": "^7.3.2",
     "app-root-path": "^3.1.0",
+    "axios": "^1.7.9",
     "dotenv": "^16.4.5",
     "node-emoji": "^2.1.3",
     "universal-emoji-parser": "^2.0.11",

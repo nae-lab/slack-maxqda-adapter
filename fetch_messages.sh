@@ -2,15 +2,19 @@
 # Load environment variables from .env file
 [ -f .env ] && source .env
 
-# Usage: ./fetch_messages.sh <channel_id> <start_date YYYY-MM-DD> <end_date YYYY-MM-DD>
-if [ "$#" -ne 3 ]; then
-  echo "Usage: $0 <channel_id> <start_date YYYY-MM-DD> <end_date YYYY-MM-DD>"
+# Updated parameter validation to support a single day (2 args) or a range (3 args).
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
+  echo "Usage: $0 <channel_id> <start_date YYYY-MM-DD> [<end_date YYYY-MM-DD>]"
   exit 1
 fi
 
 channel_id=$1
 start_date=$2
-end_date=$3
+if [ "$#" -eq 3 ]; then
+  end_date=$3
+else
+  end_date="$start_date"
+fi
 
 # Compute start and end epoch for numeric comparison
 start_epoch=$(date -j -f "%Y-%m-%d" "$start_date" "+%s")
@@ -22,16 +26,17 @@ mkdir -p out
 trap "echo 'Terminating...'; kill 0; exit 1" SIGINT SIGTERM
 
 jobs=()
-MAX_CONCURRENT_JOBS=3
+MAX_CONCURRENT_JOBS=5
 
 launch_jobs() {
   current_date="$start_date"
+  end_date_numeric=$(date -j -f "%Y-%m-%d" "$end_date" "+%Y%m%d")
   while true; do
-    current_epoch=$(date -j -f "%Y-%m-%d" "$current_date" "+%s")
-    [ "$current_epoch" -gt "$end_epoch" ] && break
+    current_date_numeric=$(date -j -f "%Y-%m-%d" "$current_date" "+%Y%m%d")
+    [ "$current_date_numeric" -gt "$end_date_numeric" ] && break
 
     while [ "$(jobs -r | wc -l | tr -d ' ')" -ge "$MAX_CONCURRENT_JOBS" ]; do
-      sleep 5
+      sleep 2
     done
 
     process_day "$current_date" &
@@ -59,5 +64,7 @@ for pid in "${jobs[@]}"; do
   wait "$pid"
 done
 
-cat out/* > out/slack-log.md
-pandoc -i out/slack-log.md -o out/slack-log.docx
+# Concatenate only markdown files (ignore directories) while excluding the output file itself
+find out -maxdepth 1 -type f -name "*.md" ! -name "slack-log.md" -exec cat {} + > out/slack-log.md
+# Updated pandoc command with resource path so images are found
+pandoc -i out/slack-log.md -o out/slack-log.docx --resource-path=out

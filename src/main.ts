@@ -6,6 +6,9 @@ dotenv.config({
 import process from "process";
 import { WebClient } from "@slack/web-api";
 import uEmojiParser from "universal-emoji-parser";
+import fs from "fs";
+import path from "path";
+import axios from "axios";
 
 import { args } from "./args";
 import {
@@ -182,6 +185,49 @@ ${await formatMessageToMarkdown(message, channelId, indent)}
   return formattedMessage;
 }
 
+// Updated helper to download a Slack file via public share API
+async function downloadSlackFile(file: any): Promise<string> {
+  // Removed early return for external files: always download locally
+  try {
+    // Share the file to obtain a public URL (needed for permissions)
+    const shareRes = await client.files.sharedPublicURL({ file: file.id });
+    if (!shareRes.ok || !shareRes.file) {
+      throw new Error("Failed to share file publicly");
+    }
+    // Use url_private_download to get binary data.
+    if (!file.url_private_download) {
+      throw new Error("Download URL not available for file " + file.id);
+    }
+    const downloadUrl: string = file.url_private_download;
+    const filesDir = path.join(process.cwd(), "out", "files");
+    if (!fs.existsSync(filesDir)) {
+      fs.mkdirSync(filesDir, { recursive: true });
+    }
+    const ext = path.extname(file.name) || ".dat";
+    const fileName = Date.now() + "_" + Math.floor(Math.random() * 10000) + ext;
+    const filePath = path.join(filesDir, fileName);
+    const response = await axios.get(downloadUrl, {
+      responseType: "arraybuffer",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    fs.writeFileSync(filePath, response.data);
+    // Revoke the public share
+    await client.files.revokePublicURL({ file: file.id });
+    // Return the local path relative to out directory
+    return `./files/${fileName}`;
+  } catch (error: any) {
+    if (error.data && error.data.error === "already_public") {
+      console.warn(`File already public: ${file.id}. Ignoring error.`);
+      return file.url_private_download || file.url_private || "";
+    }
+    if (error.data && error.data.error === "file_not_found") {
+      console.warn(`File not found: ${file.id}. Falling back to remote URL.`);
+      return file.url_private_download || file.url_private || "";
+    }
+    throw error;
+  }
+}
+
 async function formatMessageToMarkdown(
   message: MessageElement,
   channelId: string,
@@ -214,9 +260,34 @@ async function formatMessageToMarkdown(
         }
       }
     }
+  }
 
-    for (const attachment of message.attachments ?? []) {
-      messageText += attachment.text;
+  // Updated: Process attachments to include both text and downloaded images.
+  for (const attachment of message.attachments ?? []) {
+    if (attachment.text) {
+      messageText += "\n" + attachment.text;
+    }
+  }
+
+  // NEW: Process files from message.files array
+  if (message.files && Array.isArray(message.files)) {
+    for (const file of message.files) {
+      try {
+        const localFilePath = await downloadSlackFile(file);
+        if (file.mimetype && file.mimetype.startsWith("image/")) {
+          messageText += "\n\n![](" + localFilePath + ")";
+        } else {
+          // For non-image files, use Slack permalink as link
+          messageText +=
+            "\n\n[" +
+            file.name +
+            "](" +
+            (file.permalink || localFilePath) +
+            ")";
+        }
+      } catch (error) {
+        console.error("Failed to download file", file.id, error);
+      }
     }
   }
 
