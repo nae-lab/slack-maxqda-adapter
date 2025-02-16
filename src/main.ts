@@ -96,12 +96,11 @@ async function replaceMenthionToUserName(text: string) {
 
 async function fetchChannelMessages(channelId: string, date?: string) {
   try {
-    // dateの指定があれば、その日付の朝4時0分から，その日付の翌日の朝3時59分までのメッセージを取得する
+    // dateの指定があれば、その日付の0時00分から23時59分までのメッセージを取得する
     const dateOldest = date ? new Date(date) : new Date();
-    dateOldest.setHours(4, 0, 0, 0);
+    dateOldest.setHours(0, 0, 0, 0);
     const dateLatest = new Date(dateOldest);
-    dateLatest.setDate(dateLatest.getDate() + 1);
-    dateLatest.setHours(3, 59, 59, 999);
+    dateLatest.setHours(23, 59, 59, 999);
 
     let messages: MessageElement[] = [];
 
