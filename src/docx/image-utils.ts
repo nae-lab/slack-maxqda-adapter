@@ -3,14 +3,24 @@ import sharp from "sharp";
 // Helper function to get image dimensions and calculate aspect ratio
 export async function getImageDimensions(
   imageBuffer: Buffer,
-  mimeType: string
-): Promise<{ width: number; height: number }> {
+  mimeType: string,
+  maxWidth: number = 500 // Default max width to prevent page overflow
+): Promise<{
+  width: number;
+  height: number;
+  scaledWidth: number;
+  scaledHeight: number;
+}> {
+  let width = 0;
+  let height = 0;
+
   // Only try to get dimensions if it's an image
   if (mimeType && mimeType.startsWith("image/")) {
     try {
       const metadata = await sharp(imageBuffer).metadata();
       if (metadata.width && metadata.height) {
-        return { width: metadata.width, height: metadata.height };
+        width = metadata.width;
+        height = metadata.height;
       }
     } catch (error) {
       console.error("Failed to get image dimensions:", error);
@@ -18,16 +28,39 @@ export async function getImageDimensions(
   }
 
   // Default fallback dimensions - different defaults based on content type
-  if (mimeType && mimeType.startsWith("audio/")) {
-    // Use a smaller width for audio files
-    return { width: 300, height: 60 };
-  } else if (mimeType && mimeType.startsWith("video/")) {
-    // For video files, use 16:9 ratio
-    return { width: 400, height: 225 };
+  if (width === 0 || height === 0) {
+    if (mimeType && mimeType.startsWith("audio/")) {
+      // Use a smaller width for audio files
+      width = 300;
+      height = 60;
+    } else if (mimeType && mimeType.startsWith("video/")) {
+      // For video files, use 16:9 ratio
+      width = 400;
+      height = 225;
+    } else {
+      // Generic fallback for any other type
+      width = 400;
+      height = 300;
+    }
   }
 
-  // Generic fallback for any other type
-  return { width: 400, height: 300 };
+  // Calculate scaled dimensions to preserve aspect ratio
+  let scaledWidth = width;
+  let scaledHeight = height;
+
+  // Scale down if wider than maxWidth
+  if (width > maxWidth) {
+    const aspectRatio = width / height;
+    scaledWidth = maxWidth;
+    scaledHeight = Math.round(maxWidth / aspectRatio);
+  }
+
+  return {
+    width,
+    height,
+    scaledWidth,
+    scaledHeight,
+  };
 }
 
 // Helper function to convert MIME types to valid docx image types
@@ -47,19 +80,24 @@ export function getMappedImageType(
   return mimeTypeMap[mimeSubtype.toLowerCase()] || "png";
 }
 
-// Enhanced function to ensure image is in a compatible format
+// Enhanced function to ensure image is in a compatible format while preserving aspect ratio
 export async function ensureCompatibleImage(
   imageBuffer: Buffer,
   mimeType: string
 ): Promise<{ buffer: Buffer; type: "jpg" | "png" | "gif" | "bmp" }> {
   try {
+    // Get original dimensions to maintain aspect ratio
+    const metadata = await sharp(imageBuffer).metadata();
+    const width = metadata.width || 1000;
+    const height = metadata.height || 1000;
+
     // Force convert to PNG for maximum compatibility
     const processedBuffer = await sharp(imageBuffer)
       .png() // Always convert to PNG for compatibility
       .resize({
-        width: 1000, // Limit max width to prevent issues with large images
-        height: 1000,
-        fit: "inside",
+        width: Math.min(width, 1000), // Limit max width to prevent issues with large images
+        height: Math.min(height, 1000),
+        fit: "inside", // Preserves aspect ratio
         withoutEnlargement: true,
       })
       .toBuffer();

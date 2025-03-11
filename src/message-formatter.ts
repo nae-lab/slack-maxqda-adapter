@@ -147,17 +147,22 @@ export async function extractMessageText(
         // Convert to SlackFile using the utility function
         const slackFile = toSlackFile(file);
         if (slackFile) {
-          const localFilePath = await downloadSlackFile(slackFile);
+          const fileResult = await downloadSlackFile(slackFile);
+
+          // Check if we got back a permalink (starts with http) or a local file path
+          const isPermalink = fileResult.startsWith("http");
+
           if (file.mimetype && file.mimetype.startsWith("image/")) {
-            messageText += "\n\n![](" + localFilePath + ")";
+            if (!isPermalink) {
+              // If it's a local file path for an image, add it as markdown image
+              messageText += "\n\n![](" + fileResult + ")";
+            } else {
+              // If it's a permalink for an image, add as a link
+              messageText += "\n\n[" + file.name + "](" + fileResult + ")";
+            }
           } else {
-            // For non-image files, use Slack permalink as link
-            messageText +=
-              "\n\n[" +
-              file.name +
-              "](" +
-              (file.permalink || localFilePath) +
-              ")";
+            // For non-image files, always use the permalink as link
+            messageText += "\n\n[" + file.name + "](" + fileResult + ")";
           }
         } else {
           console.warn("Skipping file without id:", file);

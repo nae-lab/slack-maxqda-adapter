@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import axios from "axios";
 import { SlackFile } from "./types";
+import { File as SharedPublicFile } from "@slack/web-api/dist/types/response/FilesSharedPublicURLResponse";
 import { getSlackToken } from "./slack-client";
 import { slackClient } from "./config";
 
@@ -23,10 +24,59 @@ function isHtmlContent(buffer: Buffer): boolean {
   );
 }
 
+// Helper function to construct public file URL from permalink_public
+function constructFileUrl(sharedFile: SharedPublicFile): string | null {
+  try {
+    if (!sharedFile.permalink_public) return null;
+
+    // Extract team ID and file ID from permalink
+    // permalink_public format: https://slack-files.com/T0312P7H7MX-F08D4UL7T09-cb99f3a17c
+    const matches = sharedFile.permalink_public.match(
+      /slack-files\.com\/([^-]+)-([^-]+)-(.+)/
+    );
+    if (!matches || matches.length < 4) return null;
+
+    const teamId = matches[1];
+    const fileId = matches[2];
+    const pubSecret = matches[3];
+
+    // Process filename to exactly match Slack's format:
+    // - Convert to lowercase
+    // - Replace spaces with underscores
+    // - Handle special characters
+    let fileName = "";
+    if (sharedFile.name) {
+      fileName = sharedFile.name
+        .toLowerCase() // Convert to lowercase
+        .replace(/\s+/g, "_") // Replace spaces with underscores
+        .replace(/[^a-z0-9_.-]/g, ""); // Remove any other special chars
+    } else {
+      fileName = fileId;
+    }
+
+    // Construct the URL in the format:
+    // https://files.slack.com/files-pri/${teamId}-${fileId}/${fileName}?pub_secret=${pubSecret}`;
+    return `https://files.slack.com/files-pri/${teamId}-${fileId}/${fileName}?pub_secret=${pubSecret}`;
+  } catch (e) {
+    console.error("Error constructing file URL:", e);
+    return null;
+  }
+}
+
 // Download file from Slack
 export async function downloadSlackFile(file: SlackFile): Promise<string> {
+  // For non-image files, just return the permalink
+  if (!file.mimetype?.startsWith("image/")) {
+    console.log(
+      `File ${file.id} (${
+        file.name || "unnamed"
+      }) is not an image, returning permalink`
+    );
+    return file.permalink || `https://slack.com/files/${file.id}`;
+  }
+
   const token = getSlackToken();
-  const outputDir = path.join(process.cwd(), "files");
+  const outputDir = path.join(process.cwd(), "out/files");
   ensureDownloadDirectory(outputDir);
 
   // Generate a unique filename
@@ -36,12 +86,12 @@ export async function downloadSlackFile(file: SlackFile): Promise<string> {
   }`;
   const outputPath = path.join(outputDir, safeFileName);
 
-  console.log(`Downloading file: ${file.name || "unnamed"} (${file.id})`);
+  console.log(`Downloading image: ${file.name || "unnamed"} (${file.id})`);
 
   try {
     // Step 1: Make the file publicly accessible
     console.log(`Making file ${file.id} temporarily public...`);
-    let sharedFile = file;
+    let sharedFile: SharedPublicFile = file;
 
     try {
       const shareResponse = await slackClient.files.sharedPublicURL({
@@ -49,7 +99,7 @@ export async function downloadSlackFile(file: SlackFile): Promise<string> {
       });
 
       if (shareResponse.ok && shareResponse.file) {
-        sharedFile = shareResponse.file as SlackFile;
+        sharedFile = shareResponse.file;
         console.log(`File ${file.id} is now temporarily public`);
       } else {
         console.warn(
@@ -70,11 +120,16 @@ export async function downloadSlackFile(file: SlackFile): Promise<string> {
     // Step 2: Download the file
     let downloadSuccess = false;
 
+    // Construct properly formatted public URL
+    const publicFileUrl = constructFileUrl(sharedFile);
+
     // Try download URLs in order of preference
     const downloadUrls = [
+      // Try the properly formatted public URL first if available
+      publicFileUrl,
       sharedFile.url_private_download,
       sharedFile.url_private,
-      sharedFile.permalink,
+      sharedFile.permalink_public,
     ].filter(Boolean) as string[];
 
     for (const url of downloadUrls) {
@@ -128,43 +183,19 @@ export async function downloadSlackFile(file: SlackFile): Promise<string> {
       // Continue execution, this is not critical
     }
 
-      if (downloadSuccess) {
-        return outputPath;
-      }
+    if (downloadSuccess) {
+      return outputPath;
+    }
 
-    throw new Error("All download attempts failed");
+    // If download fails, return the permalink
+    console.warn(
+      `Failed to download image ${file.id}, returning permalink instead`
+    );
+    return file.permalink || `https://slack.com/files/${file.id}`;
   } catch (error: any) {
     console.error(`Error downloading file ${file.id}: ${error}`);
 
-    // Create a placeholder file since we couldn't download it
-    try {
-      console.log(`Creating placeholder for file ${file.id}`);
-      const errorMessage = `Could not download file ${
-        file.name || "unnamed"
-      } (${file.id}).
-Please check the original in Slack: ${file.permalink}`;
-
-      // For images, create a placeholder image with error text
-      if (file.mimetype?.startsWith("image/")) {
-        const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200">
-          <rect width="400" height="200" fill="#f0f0f0" />
-          <text x="20" y="40" font-family="Arial" font-size="14" fill="red">Error: Could not download image</text>
-          <text x="20" y="70" font-family="Arial" font-size="12">${
-            file.name || "unnamed"
-          }</text>
-          <text x="20" y="100" font-family="Arial" font-size="12">Please check original in Slack</text>
-          </svg>`;
-
-        fs.writeFileSync(outputPath, svgContent);
-      } else {
-        fs.writeFileSync(outputPath, errorMessage);
-      }
-
-      console.log(`Created placeholder file at ${outputPath}`);
-      return outputPath;
-    } catch (placeholderError: any) {
-      console.error(`Failed to create placeholder: ${placeholderError}`);
-      throw new Error(`Failed to download file: ${error.message}`);
-    }
+    // Return the permalink if any error occurs during download
+    return file.permalink || `https://slack.com/files/${file.id}`;
   }
 }

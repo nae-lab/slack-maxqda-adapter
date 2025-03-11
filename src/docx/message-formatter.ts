@@ -123,59 +123,49 @@ async function addFilesParagraphs(
     try {
       const slackFile = toSlackFile(file);
       if (slackFile) {
-        // Download file to our debug directory first
-        const downloadedFilePath = await downloadSlackFile(slackFile);
+        // Download file or get permalink
+        const fileResult = await downloadSlackFile(slackFile);
 
-        // Important: Use the downloaded file path directly - don't reconstruct paths
-        // This path is already an absolute path from the downloadSlackFile function
-        const filePath = downloadedFilePath;
+        // Check if we got back a permalink (starts with http) or a local file path
+        const isPermalink = fileResult.startsWith("http");
 
-        // Log for debugging purposes
-        console.log(`Working with downloaded file at: ${filePath}`);
-
-        // Check if file exists
-        if (!fs.existsSync(filePath)) {
-          console.error(`Downloaded file does not exist at: ${filePath}`);
-          throw new Error(`File not found: ${filePath}`);
-        }
-
-        // Handle different file types appropriately
         if (file.mimetype && file.mimetype.startsWith("image/")) {
-          console.log(`Processing image: ${file.name}, path: ${filePath}`);
-          await addImageParagraphs(
-            paragraphs,
-            file,
-            filePath,
-            filePath, // Use the same path for both original and debug
-            indent
-          );
-        } else if (file.mimetype && file.mimetype.startsWith("audio/")) {
-          // Handle audio files as links
-          paragraphs.push(
-            createFileLinkParagraph(
-              "Audio file",
-              file.name || "audio file",
-              file.permalink || filePath,
+          if (!isPermalink) {
+            // This is a local file path for an image
+            console.log(`Processing image: ${file.name}, path: ${fileResult}`);
+
+            // Verify file exists
+            if (!fs.existsSync(fileResult)) {
+              console.error(`Downloaded file does not exist at: ${fileResult}`);
+              throw new Error(`File not found: ${fileResult}`);
+            }
+
+            // Process the image
+            await addImageParagraphs(
+              paragraphs,
+              file,
+              fileResult,
+              fileResult,
               indent
-            )
-          );
-        } else if (file.mimetype && file.mimetype.startsWith("video/")) {
-          // Handle video files as links
-          paragraphs.push(
-            createFileLinkParagraph(
-              "Video file",
-              file.name || "video file",
-              file.permalink || filePath,
-              indent
-            )
-          );
+            );
+          } else {
+            // This is a permalink for an image - add a link
+            paragraphs.push(
+              createFileLinkParagraph(
+                "Image file",
+                file.name || "image file",
+                fileResult,
+                indent
+              )
+            );
+          }
         } else {
-          // For all other file types, add as a link to the file
+          // For all other file types, always add as a link
           paragraphs.push(
             createFileLinkParagraph(
-              "File",
+              getFileTypeLabel(file.mimetype || ""),
               file.name || "unnamed file",
-              file.permalink || filePath,
+              fileResult,
               indent
             )
           );
@@ -205,7 +195,22 @@ async function addFilesParagraphs(
   }
 }
 
-// Helper function to add image paragraphs - now with a debug path parameter
+// Helper function to determine file type label
+function getFileTypeLabel(mimetype: string): string {
+  if (mimetype.startsWith("audio/")) return "Audio file";
+  if (mimetype.startsWith("video/")) return "Video file";
+  if (mimetype.startsWith("image/")) return "Image file";
+
+  // Try to extract a meaningful type
+  const mainType = mimetype.split("/")[0];
+  if (mainType && mainType !== "application") {
+    return mainType.charAt(0).toUpperCase() + mainType.slice(1) + " file";
+  }
+
+  return "File";
+}
+
+// Helper function to add image paragraphs - now with aspect ratio preservation
 async function addImageParagraphs(
   paragraphs: Paragraph[],
   file: MessageFile,
@@ -275,17 +280,27 @@ async function addImageParagraphs(
         fileExt || file.mimetype?.split("/")[1] || "png"
       );
 
-      // Use simple dimensions
-      const width = 300;
-      const height = 200;
-
-      console.log(
-        `DEBUG: Embedding image as ${imageType}, width=${width}, height=${height}`
+      // Get image dimensions with aspect ratio preservation
+      const maxPageWidth = 500; // Maximum width to prevent page overflow
+      const { scaledWidth, scaledHeight } = await getImageDimensions(
+        imageData,
+        file.mimetype || "image/png",
+        maxPageWidth
       );
 
-      // Try embedding the raw image data
+      console.log(
+        `DEBUG: Embedding image as ${imageType}, width=${scaledWidth}, height=${scaledHeight} (preserving aspect ratio)`
+      );
+
+      // Try embedding the raw image data with proper aspect ratio
       paragraphs.push(
-        createImageParagraph(imageData, width, height, imageType, indent)
+        createImageParagraph(
+          imageData,
+          scaledWidth,
+          scaledHeight,
+          imageType,
+          indent
+        )
       );
       console.log(`DEBUG: Successfully created image paragraph`);
     } catch (embeddingErr) {
@@ -296,9 +311,25 @@ async function addImageParagraphs(
       const { buffer: processedImageData, type: imageType } =
         await ensureCompatibleImage(imageData, file.mimetype || "image/png");
 
-      console.log(`DEBUG: Conversion completed, embedding as ${imageType}`);
+      // Get dimensions for the processed image
+      const maxPageWidth = 500;
+      const { scaledWidth, scaledHeight } = await getImageDimensions(
+        processedImageData,
+        file.mimetype || "image/png",
+        maxPageWidth
+      );
+
+      console.log(
+        `DEBUG: Conversion completed, embedding as ${imageType}, width=${scaledWidth}, height=${scaledHeight}`
+      );
       paragraphs.push(
-        createImageParagraph(processedImageData, 300, 200, imageType, indent)
+        createImageParagraph(
+          processedImageData,
+          scaledWidth,
+          scaledHeight,
+          imageType,
+          indent
+        )
       );
     }
   } catch (err: unknown) {
