@@ -10,10 +10,16 @@ export const args = yargs(hideBin(process.argv))
       description: "The ID of the channel to fetch messages from",
       demandOption: true,
     },
-    date: {
-      alias: "d",
+    startDate: {
+      alias: "s",
       type: "string",
-      description: "The date to fetch messages from",
+      description: "Start date to fetch messages from (YYYY-MM-DD)",
+      demandOption: true,
+    },
+    endDate: {
+      alias: "e",
+      type: "string",
+      description: "End date to fetch messages to (YYYY-MM-DD)",
     },
   })
   .parseSync();

@@ -166,6 +166,22 @@ export async function extractMessageText(
     }
   }
 
+  // Process URLs correctly
+  // 1. Convert Slack pipe URLs first: <https://example.com|display text>
+  messageText = messageText.replace(
+    /<(https?:\/\/[^|]+)\|([^>]+)>/g,
+    (_, url, displayText) => {
+      // Use display text for the link text
+      return displayText;
+    }
+  );
+
+  // 2. Convert angle bracket URLs: <https://example.com>
+  messageText = messageText.replace(/<(https?:\/\/[^>]+)>/g, (_, url) => {
+    // Just keep the URL itself
+    return url;
+  });
+
   return messageText;
 }
 

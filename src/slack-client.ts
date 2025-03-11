@@ -91,3 +91,49 @@ export async function fetchChannelMessages(channelId: string, date?: string) {
     console.error("An error occurred:", error);
   }
 }
+
+export async function fetchChannelMessagesForDateRange(
+  channelId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ date: string; messages: MessageElement[] }[]> {
+  try {
+    const results: { date: string; messages: MessageElement[] }[] = [];
+
+    // Convert dates to Date objects
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Validate dates
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new Error("Invalid date format. Use YYYY-MM-DD");
+    }
+
+    // Loop through each day in the range
+    const current = new Date(start);
+
+    while (current <= end) {
+      // Format the current date
+      const dateStr = current.toISOString().split("T")[0];
+      console.log(`Fetching messages for ${dateStr}...`);
+
+      // Get messages for the current day
+      const messages = await fetchChannelMessages(channelId, dateStr);
+
+      if (messages && messages.length > 0) {
+        results.push({
+          date: dateStr,
+          messages: [...messages].reverse(), // Oldest first
+        });
+      }
+
+      // Move to next day
+      current.setDate(current.getDate() + 1);
+    }
+
+    return results;
+  } catch (error) {
+    console.error("Error fetching messages for date range:", error);
+    return [];
+  }
+}
