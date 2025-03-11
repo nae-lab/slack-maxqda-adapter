@@ -8,6 +8,7 @@ import {
 } from "./types";
 import { getUserName, retrieveThreadMessages } from "./slack-client";
 import { downloadSlackFile } from "./file-handler";
+import { processUrlsAsPlainText } from "./docx/url-utils";
 
 export async function replaceMentionToUserName(text: string) {
   const mentionRegex = /<@([A-Z0-9]+)>/g;
@@ -98,6 +99,7 @@ export async function formatMessageToMarkdown(
 
   let messageText = await extractMessageText(message);
   messageText = await replaceMentionToUserName(messageText);
+  messageText = processUrlsAsPlainText(messageText);
   messageText = messageText.replace(/\n/g, `\n${indentStr}`);
 
   const formattedMessage = `${splitter}
@@ -172,22 +174,6 @@ export async function extractMessageText(
       }
     }
   }
-
-  // Process URLs correctly
-  // 1. Convert Slack pipe URLs first: <https://example.com|display text>
-  messageText = messageText.replace(
-    /<(https?:\/\/[^|]+)\|([^>]+)>/g,
-    (_, url, displayText) => {
-      // Use display text for the link text
-      return displayText;
-    }
-  );
-
-  // 2. Convert angle bracket URLs: <https://example.com>
-  messageText = messageText.replace(/<(https?:\/\/[^>]+)>/g, (_, url) => {
-    // Just keep the URL itself
-    return url;
-  });
 
   return messageText;
 }

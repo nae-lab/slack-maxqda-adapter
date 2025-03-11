@@ -113,6 +113,17 @@ export function processUrls(text: string): (TextRun | ExternalHyperlink)[] {
   return result;
 }
 
+export function processUrlsAsPlainText(text: string): string {
+  console.log("Processing URLs as plain text...", text);
+  let replaced = text;
+  replaced = replaced.replace(
+    /<(https?:\/\/[^|]+)\|([^>]+)>/g,
+    (_, url, displayText) => displayText
+  );
+  replaced = replaced.replace(/<(https?:\/\/[^>]+)>/g, (_, url) => url);
+  return replaced;
+}
+
 // Generate Slack message URL for linking
 export function generateSlackMessageUrl(
   channelId: string,

@@ -23,6 +23,9 @@ importers:
       dotenv:
         specifier: ^16.4.5
         version: 16.4.5
+      emoji-datasource:
+        specifier: ^15.1.2
+        version: 15.1.2
       node-emoji:
         specifier: ^2.1.3
         version: 2.1.3
@@ -300,6 +303,9 @@ packages:
   dotenv@16.4.5:
     resolution: {integrity: sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==}
     engines: {node: '>=12'}
+
+  emoji-datasource@15.1.2:
+    resolution: {integrity: sha512-tXAqGsrDVhgCRpFePtaD9P4Z8Ro2SUQSL/4MIJBG0SxqQJaMslEbin8J53OaFwEBu6e7JxFaIF6s4mw9+8acAQ==}
 
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
@@ -749,6 +755,8 @@ snapshots:
       xml-js: 1.6.11
 
   dotenv@16.4.5: {}
+
+  emoji-datasource@15.1.2: {}
 
   emoji-regex@8.0.0: {}
 

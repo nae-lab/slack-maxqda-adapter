@@ -90,6 +90,12 @@ export const styles = {
     spacing: 60, // Spacing between reactions
     padding: 120, // Padding inside reaction bubble
   },
+
+  // Adding reactionText style if it doesn't exist
+  reactionText: {
+    size: 18, // Smaller text for reactions
+    color: "666666", // Light gray color for reactions
+  },
 };
 
 // Export document style definitions for use with createStyles
