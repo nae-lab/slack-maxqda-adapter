@@ -21,7 +21,7 @@
 ## 使用例
 
 ```sh
-./fetch_messages.sh 2024-08-13 2024-09-05
+./fetch_messages.sh CHANNELID 2024-08-13 2024-09-05
 ```
 
 このスクリプトは、複数月に渡る日付範囲のメッセージを取得し、日別の出力を連結して out/slack-log.md を生成、pandoc により out/slack-log.docx に変換します。
