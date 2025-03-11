@@ -27,16 +27,16 @@
 ## Tool Details
 This tool retrieves Slack messages from a specified channel and date range. It:
 - Queries the Slack API for messages.
-- Saves daily messages as markdown files in the `out` directory.
-- Concatenates all daily files into a single `slack-log.md` file.
-- Converts the markdown file to a DOCX file using pandoc for import into MAXQDA.
+- Saves docx files in `out` directory
+- When imported into MAXQDA, the docx file is split by date and senders are coded.
 
 ## Usage Example
 
 ```sh
-./fetch_messages.sh CHANNELID 2024-08-13 2024-09-05
+pnpm main -c CHANNEL_ID -s 2024-04-01 -e 2025-03-11
 ```
 
-This script retrieves messages for a multi-month range, concatenates the daily output into out/slack-log.md, and converts it to out/slack-log.docx using pandoc.
+This script retrieves messages over a multi-month date range and converts them to .docx.
 
-You would import the resulting `out/slack-log.docx` into MAXQDA using preprocessor feature.
+Import the resulting file into MAXQDA as "Structured Text".
+

@@ -7,44 +7,94 @@ export function getSlackToken(): string {
   return process.env.SLACK_API_TOKEN || "";
 }
 
+// Add sleep helper for backoff
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function retrieveMessages(
   channelId: string,
   oldest: number,
   latest: number,
   cursor?: string
 ): Promise<MessagesResult> {
-  let messages: MessageElement[] = [];
-  let result = await slackClient.conversations.history({
+  const maxRetries = 3;
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      const result = await slackClient.conversations.history({
+        channel: channelId,
+        oldest: oldest.toString(),
+        latest: latest.toString(),
+        limit: 1000,
+        cursor: cursor,
+      });
+      if (result.ok && result.messages) {
+        return { messages: result.messages, result };
+      } else {
+        return { messages: [], result };
+      }
+    } catch (error: any) {
+      if (error.data && error.data.retry_after) {
+        const waitTime = Number(error.data.retry_after) * 1000 || 10000;
+        console.warn(`Rate limited. Retrying in ${waitTime / 1000} seconds...`);
+        await sleep(waitTime);
+      } else {
+        throw error;
+      }
+    }
+    retries++;
+  }
+  // Final attempt (if needed)
+  const result = await slackClient.conversations.history({
     channel: channelId,
     oldest: oldest.toString(),
     latest: latest.toString(),
     limit: 1000,
     cursor: cursor,
   });
-
-  if (result.ok && result.messages) {
-    messages = result.messages;
-  }
-
-  return { messages, result };
+  return { messages: result.messages || [], result };
 }
 
 export async function retrieveThreadMessages(
   channelId: string,
   threadTs: string
 ): Promise<MessageElement[]> {
-  let messages: MessageElement[] = [];
-  let result = await slackClient.conversations.replies({
+  const maxRetries = 3;
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      const result = await slackClient.conversations.replies({
+        channel: channelId,
+        ts: threadTs,
+        limit: 1000,
+      });
+      if (result.ok && result.messages) {
+        return result.messages;
+      } else {
+        return [];
+      }
+    } catch (error: any) {
+      if (error.data && error.data.retry_after) {
+        const waitTime = Number(error.data.retry_after) * 1000 || 10000;
+        console.warn(
+          `Rate limited in thread messages. Retrying in ${
+            waitTime / 1000
+          } seconds...`
+        );
+        await sleep(waitTime);
+      } else {
+        throw error;
+      }
+    }
+    retries++;
+  }
+  const result = await slackClient.conversations.replies({
     channel: channelId,
     ts: threadTs,
     limit: 1000,
   });
-
-  if (result.ok && result.messages) {
-    messages = result.messages;
-  }
-
-  return messages;
+  return result.messages || [];
 }
 
 export async function getUserName(userId: string) {
