@@ -50,10 +50,10 @@ export async function createMessageParagraphs(
   );
 
   // Add separator
-  paragraphs.push(createSeparatorParagraph(indent));
+  paragraphs.push(createSeparatorParagraph({ indent }));
 
   // Add SPEAKER tag for MAXQDA
-  paragraphs.push(createSpeakerParagraph(username || "No Name", indent));
+  paragraphs.push(createSpeakerParagraph(username || "No Name", { indent }));
 
   // Add username and timestamp with hyperlink
   paragraphs.push(
@@ -61,7 +61,7 @@ export async function createMessageParagraphs(
       username || "No Name",
       timestamp,
       messageUrl,
-      indent
+      { indent }
     )
   );
 
@@ -79,24 +79,22 @@ export async function createMessageParagraphs(
 
   // Add files/images directly to the document
   if (message.files && Array.isArray(message.files)) {
-    await addFilesParagraphs(
-      paragraphs,
-      message.files as MessageFile[],
-      indent
-    );
+    await addFilesParagraphs(paragraphs, message.files as MessageFile[], {
+      indent,
+    });
   }
 
   // Enhanced reactions implementation to display emojis and custom icons
   if (message.reactions && message.reactions.length > 0) {
     const reactionParagraphs = await createReactionParagraphs(
       message.reactions,
-      indent
+      { indent }
     );
     paragraphs.push(...reactionParagraphs);
   }
 
   // Add ENDSPEAKER tag for MAXQDA
-  paragraphs.push(createEndSpeakerParagraph(indent));
+  paragraphs.push(createEndSpeakerParagraph({ indent }));
 
   return paragraphs;
 }

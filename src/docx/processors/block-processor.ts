@@ -6,9 +6,9 @@ import {
   createImageTitleParagraph,
   createFileLinkParagraph,
   createErrorParagraph,
-  createTextParagraph,
+  createTextParagraphs,
   createCodeBlockParagraphs,
-  createBlockquoteParagraph,
+  createBlockquoteParagraphs,
 } from "../paragraph-formatters";
 import { processMessageText } from "./text-processor";
 
@@ -107,7 +107,11 @@ async function processRichTextSection(
   }
 
   if (sectionText) {
-    paragraphs.push(createTextParagraph(sectionText, indent));
+    paragraphs.push(
+      ...createTextParagraphs(sectionText, {
+        indent,
+      })
+    );
   }
 }
 
@@ -149,7 +153,7 @@ async function processImageBlock(
   indent: Record<string, any>
 ): Promise<void> {
   if (block.title) {
-    paragraphs.push(createImageTitleParagraph(block.title.text, indent));
+    paragraphs.push(createImageTitleParagraph(block.title.text, { indent }));
   }
 
   try {
@@ -159,7 +163,7 @@ async function processImageBlock(
           "Image",
           block.alt_text || "Image",
           block.image_url,
-          indent
+          { indent }
         )
       );
     }
@@ -167,7 +171,7 @@ async function processImageBlock(
     paragraphs.push(
       createErrorParagraph(
         `[Error embedding image: ${block.alt_text || "image"}]`,
-        indent
+        { indent }
       )
     );
   }
@@ -188,8 +192,8 @@ async function processContextBlock(
 
     if (contextTexts.length > 0) {
       paragraphs.push(
-        createTextParagraph(contextTexts.join(" "), {
-          ...indent,
+        ...createTextParagraphs(contextTexts.join(" "), {
+          indent,
           size: styles.fontSize.small,
           italics: true,
         })
@@ -226,7 +230,7 @@ async function processRichTextPreformatted(
   }
 
   if (codeText) {
-    paragraphs.push(...createCodeBlockParagraphs(codeText, indent));
+    paragraphs.push(...createCodeBlockParagraphs(codeText, { indent }));
   }
 }
 
@@ -249,7 +253,7 @@ async function processRichTextQuote(
   }
 
   if (quoteText) {
-    paragraphs.push(createBlockquoteParagraph(quoteText, indent));
+    paragraphs.push(...createBlockquoteParagraphs(quoteText, { indent }));
   }
 }
 
@@ -265,7 +269,7 @@ async function processRichTextList(
 
   for (const item of list.elements) {
     if (item.type === "rich_text_list_item") {
-      await processListItem(item, isOrdered, counter, paragraphs, indent);
+      await processListItem(item, isOrdered, counter, paragraphs, { indent });
       if (isOrdered) counter++;
     }
   }
@@ -290,7 +294,7 @@ async function processListItem(
 
   if (itemText) {
     paragraphs.push(
-      createTextParagraph(itemText, {
+      ...createTextParagraphs(itemText, {
         ...indent,
         indent: {
           left: (indent.left || 0) + styles.indent,

@@ -1,8 +1,8 @@
 import { Paragraph } from "docx";
 import {
-  createTextParagraph,
+  createTextParagraphs,
   createCodeBlockParagraphs,
-  createBlockquoteParagraph,
+  createBlockquoteParagraphs,
 } from "../paragraph-formatters";
 
 export async function processMessageText(
@@ -44,14 +44,18 @@ export async function processTextWithBlockquotes(
 
     if (blockquoteMatch) {
       if (currentText.length > 0) {
-        paragraphs.push(createTextParagraph(currentText.join("\n"), indent));
+        paragraphs.push(
+          ...createTextParagraphs(currentText.join("\n"), { indent })
+        );
         currentText = [];
       }
       currentBlockquote.push(blockquoteMatch[1]);
     } else {
       if (currentBlockquote.length > 0) {
         paragraphs.push(
-          createBlockquoteParagraph(currentBlockquote.join("\n"), indent)
+          ...createBlockquoteParagraphs(currentBlockquote.join("\n"), {
+            indent,
+          })
         );
         currentBlockquote = [];
       }
@@ -59,7 +63,9 @@ export async function processTextWithBlockquotes(
       if (line.trim()) {
         currentText.push(line);
       } else if (currentText.length > 0) {
-        paragraphs.push(createTextParagraph(currentText.join("\n"), indent));
+        paragraphs.push(
+          ...createTextParagraphs(currentText.join("\n"), { indent })
+        );
         currentText = [];
       }
     }
@@ -67,10 +73,12 @@ export async function processTextWithBlockquotes(
 
   if (currentBlockquote.length > 0) {
     paragraphs.push(
-      createBlockquoteParagraph(currentBlockquote.join("\n"), indent)
+      ...createBlockquoteParagraphs(currentBlockquote.join("\n"), { indent })
     );
   }
   if (currentText.length > 0) {
-    paragraphs.push(createTextParagraph(currentText.join("\n"), indent));
+    paragraphs.push(
+      ...createTextParagraphs(currentText.join("\n"), { indent })
+    );
   }
 }

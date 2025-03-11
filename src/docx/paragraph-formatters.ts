@@ -97,27 +97,45 @@ export function createUsernameTimestampParagraph(
 }
 
 // Create a text paragraph with formatting support
-export function createTextParagraph(text: string, options = {}) {
+export function createTextParagraphs(text: string, options = {}): Paragraph[] {
   // Handle basic Markdown formatting
-  const formattedText = formatMarkdownText(text);
+  const formattedText = formatMarkdownText(text, options);
 
-  return new Paragraph({
-    children: formattedText,
-    spacing: {
-      after: 120,
-    },
-    ...options,
-  });
+  return formattedText;
 }
 
 // Helper function to parse basic markdown
-function formatMarkdownText(text: string): ParagraphChild[] {
+function formatMarkdownText(text: string, options = {}): Paragraph[] {
+  const result: Paragraph[] = [];
+
+  // split text into lines
+  const lines = text.split("\n");
+  for (const line of lines) {
+    const children = formatMarkdownLine(line);
+    result.push(
+      new Paragraph({
+        children: [...children],
+        spacing: {
+          before: 120,
+          after: 120,
+        },
+        ...options,
+      })
+    );
+  }
+
+  return result;
+}
+
+// Helper function to parse a single line of markdown
+function formatMarkdownLine(text: string): ParagraphChild[] {
   const result: ParagraphChild[] = [];
 
   const combinedPattern = new RegExp(
     "(\\*\\*(.*?)\\*\\*|__(.*?)__)|(\\*(.*?)\\*|_(.*?)_)|(`(.*?)`)|(\\[(.*?)\\]\\((.*?)\\))|(https?:\\/\\/[^\\s]+)",
     "g"
   );
+
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -354,9 +372,11 @@ export function createCodeBlockParagraphs(code: string, options = {}) {
 }
 
 // Create blockquote paragraphs
-export function createBlockquoteParagraph(text: string, options = {}) {
-  return new Paragraph({
-    children: formatMarkdownText(text),
+export function createBlockquoteParagraphs(
+  text: string,
+  options: { indent?: { left?: number } } = {}
+): Paragraph[] {
+  return formatMarkdownText(text, {
     border: {
       left: {
         color: styles.colors.blockquoteBorder,
@@ -365,7 +385,7 @@ export function createBlockquoteParagraph(text: string, options = {}) {
       },
     },
     indent: {
-      left: styles.blockquoteIndent,
+      left: styles.blockquoteIndent + (options.indent?.left || 0),
     },
     spacing: {
       before: 120,
