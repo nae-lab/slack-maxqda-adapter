@@ -49,13 +49,17 @@ export async function addFilesParagraphs(
       const slackFile = toSlackFile(file);
       if (!slackFile) continue;
 
+      // Download file using authenticated request
       const fileResult = await downloadSlackFile(slackFile);
+
+      // Check if the result is a local file path or a URL
       const isPermalink = fileResult.startsWith("http");
 
       if (file.mimetype?.startsWith("image/")) {
         if (!isPermalink) {
           await processImageFile(paragraphs, file, fileResult, indent);
         } else {
+          // If we only have a permalink, create a link to it
           paragraphs.push(
             createFileLinkParagraph(
               "Image file",

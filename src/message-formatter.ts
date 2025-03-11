@@ -6,7 +6,11 @@ import {
   toSlackFile,
   MessageFile,
 } from "./types";
-import { getUserName, retrieveThreadMessages } from "./slack-client";
+import {
+  getUserName,
+  retrieveThreadMessages,
+  generateSlackMessageUrl,
+} from "./slack-client";
 import { downloadSlackFile } from "./file-handler";
 import { processUrlsAsPlainText } from "./docx/url-utils";
 
@@ -88,14 +92,13 @@ export async function formatMessageToMarkdown(
   const username = message.user ? await getUserName(message.user) : "No Name";
   const timestamp = new Date(Number(message.ts) * 1000);
 
-  let messageUrl = `https://ut-naelab.slack.com/archives/${channelId}/p${message.ts?.replace(
-    ".",
-    ""
-  )}`;
-  if (message.parent_user_id) {
-    // スレッドの場合
-    messageUrl += `?thread_ts=${message.thread_ts}&cid=${channelId}`;
-  }
+  // Use slack-client helper; no need for token parameter now.
+  const messageUrl = await generateSlackMessageUrl(
+    channelId,
+    message.ts,
+    message.thread_ts,
+    message.parent_user_id
+  );
 
   let messageText = await extractMessageText(message);
   messageText = await replaceMentionToUserName(messageText);

@@ -4,7 +4,7 @@ import { MessageElement, MessagesResult } from "./types";
 // Add this function to export the token for file downloads
 export function getSlackToken(): string {
   // Return the token from environment or wherever you're storing it
-  return process.env.SLACK_TOKEN || '';
+  return process.env.SLACK_API_TOKEN || "";
 }
 
 export async function retrieveMessages(
@@ -142,4 +142,38 @@ export async function fetchChannelMessagesForDateRange(
     console.error("Error fetching messages for date range:", error);
     return [];
   }
+}
+
+// New helper to fetch workspace URL using slackClient
+export async function fetchWorkspaceUrl(): Promise<string> {
+  // Use slackClient exposed from config.ts
+  const response = await slackClient.team.info();
+  const domain =
+    response.team && response.team.domain ? response.team.domain : "default";
+  return `https://${domain}.slack.com`;
+}
+
+// New helper to generate Slack message URL using the workspace URL from the API
+export async function generateSlackMessageUrl(
+  channelId: string,
+  messageTs: string | undefined,
+  threadTs: string | undefined,
+  parentUserId: string | undefined
+): Promise<string> {
+  const workspaceUrl = await fetchWorkspaceUrl();
+
+  if (!messageTs) {
+    return `${workspaceUrl}/archives/${channelId}`;
+  }
+
+  let messageUrl = `${workspaceUrl}/archives/${channelId}/p${messageTs.replace(
+    ".",
+    ""
+  )}`;
+
+  if (parentUserId && threadTs) {
+    messageUrl += `?thread_ts=${threadTs}&cid=${channelId}`;
+  }
+
+  return messageUrl;
 }

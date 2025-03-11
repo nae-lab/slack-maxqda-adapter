@@ -123,28 +123,3 @@ export function processUrlsAsPlainText(text: string): string {
   replaced = replaced.replace(/<(https?:\/\/[^>]+)>/g, (_, url) => url);
   return replaced;
 }
-
-// Generate Slack message URL for linking
-export function generateSlackMessageUrl(
-  channelId: string,
-  messageTs?: string,
-  threadTs?: string,
-  parentUserId?: string
-): string {
-  // Handle case where messageTs is undefined
-  if (!messageTs) {
-    return `https://ut-naelab.slack.com/archives/${channelId}`;
-  }
-
-  let messageUrl = `https://ut-naelab.slack.com/archives/${channelId}/p${messageTs.replace(
-    ".",
-    ""
-  )}`;
-
-  if (parentUserId && threadTs) {
-    // Add thread parameters for thread messages
-    messageUrl += `?thread_ts=${threadTs}&cid=${channelId}`;
-  }
-
-  return messageUrl;
-}

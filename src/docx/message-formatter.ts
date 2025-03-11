@@ -12,7 +12,7 @@ import {
   getMappedImageType,
   ensureCompatibleImage,
 } from "./image-utils";
-import { generateSlackMessageUrl } from "./url-utils";
+import { generateSlackMessageUrl } from "../slack-client";
 import { styles } from "./styles";
 import {
   createSeparatorParagraph,
@@ -42,7 +42,7 @@ export async function createMessageParagraphs(
     indentLevel > 0 ? { left: styles.threadIndent * indentLevel } : {};
 
   // Generate Slack message URL (for linking the timestamp)
-  const messageUrl = generateSlackMessageUrl(
+  const messageUrl = await generateSlackMessageUrl(
     channelId,
     message.ts,
     message.thread_ts,
@@ -99,177 +99,4 @@ export async function createMessageParagraphs(
   paragraphs.push(createEndSpeakerParagraph(indent));
 
   return paragraphs;
-}
-
-// Helper function to ensure output directories exist
-function ensureDirectoriesExist(): string {
-  const filesDir = path.join(process.cwd(), "out", "files");
-  if (!fs.existsSync(filesDir)) {
-    fs.mkdirSync(filesDir, { recursive: true });
-    console.log(`Created output directory: ${filesDir}`);
-  }
-  return filesDir;
-}
-
-// Helper function to determine file type label
-function getFileTypeLabel(mimetype: string): string {
-  if (mimetype.startsWith("audio/")) return "Audio file";
-  if (mimetype.startsWith("video/")) return "Video file";
-  if (mimetype.startsWith("image/")) return "Image file";
-
-  // Try to extract a meaningful type
-  const mainType = mimetype.split("/")[0];
-  if (mainType && mainType !== "application") {
-    return mainType.charAt(0).toUpperCase() + mainType.slice(1) + " file";
-  }
-
-  return "File";
-}
-
-// Helper function to add image paragraphs - now with aspect ratio preservation
-async function addImageParagraphs(
-  paragraphs: Paragraph[],
-  file: MessageFile,
-  filePath: string,
-  indent: Record<string, any> = {}
-): Promise<void> {
-  // Add title paragraph for the image first
-  paragraphs.push(createImageTitleParagraph(file.name || "", indent));
-
-  try {
-    console.log(`DEBUG: Loading image from ${filePath}`);
-
-    // First try to validate that the file exists
-    if (!fs.existsSync(filePath)) {
-      console.error(`DEBUG: File does not exist at path: ${filePath}`);
-      throw new Error(`File not found: ${filePath}`);
-    }
-
-    // Get file stats for debugging
-    const stats = fs.statSync(filePath);
-    console.log(
-      `DEBUG: File size: ${stats.size} bytes, last modified: ${stats.mtime}`
-    );
-
-    // Read the file for embedding
-    const imageData = fs.readFileSync(filePath);
-    console.log(`DEBUG: Successfully read ${imageData.length} bytes from file`);
-
-    // Check if this is an SVG placeholder (meaning download failed)
-    const isSvgPlaceholder = imageData
-      .toString("utf8", 0, 100)
-      .includes('<svg xmlns="http://www.w3.org/2000/svg"');
-
-    if (isSvgPlaceholder) {
-      console.log(`DEBUG: Detected SVG placeholder for failed download`);
-      // Add a link to the original file instead of embedding the placeholder
-      paragraphs.push(
-        createErrorParagraph(
-          `[Unable to download image: ${file.name || "unnamed file"}]`,
-          indent
-        )
-      );
-
-      // Add a link to the original file in Slack
-      if (file.permalink) {
-        paragraphs.push(
-          createFileLinkParagraph(
-            "Original image in Slack",
-            file.name || "image file",
-            file.permalink,
-            indent
-          )
-        );
-      }
-      return;
-    }
-
-    // Try direct embedding
-    try {
-      // Attempt to detect the image type from the file extension
-      const fileExt = path
-        .extname(file.name || "")
-        .toLowerCase()
-        .substring(1);
-      const imageType = getMappedImageType(
-        fileExt || file.mimetype?.split("/")[1] || "png"
-      );
-
-      // Get image dimensions with aspect ratio preservation
-      const maxPageWidth = 500; // Maximum width to prevent page overflow
-      const { scaledWidth, scaledHeight } = await getImageDimensions(
-        imageData,
-        file.mimetype || "image/png",
-        maxPageWidth
-      );
-
-      console.log(
-        `DEBUG: Embedding image as ${imageType}, width=${scaledWidth}, height=${scaledHeight} (preserving aspect ratio)`
-      );
-
-      // Try embedding the raw image data with proper aspect ratio
-      paragraphs.push(
-        createImageParagraph(
-          imageData,
-          scaledWidth,
-          scaledHeight,
-          imageType,
-          indent
-        )
-      );
-      console.log(`DEBUG: Successfully created image paragraph`);
-    } catch (embeddingErr) {
-      console.error(`DEBUG: Error during direct embedding: ${embeddingErr}`);
-
-      // Try with the image conversion approach
-      console.log(`DEBUG: Trying with conversion...`);
-      const { buffer: processedImageData, type: imageType } =
-        await ensureCompatibleImage(imageData, file.mimetype || "image/png");
-
-      // Get dimensions for the processed image
-      const maxPageWidth = 500;
-      const { scaledWidth, scaledHeight } = await getImageDimensions(
-        processedImageData,
-        file.mimetype || "image/png",
-        maxPageWidth
-      );
-
-      console.log(
-        `DEBUG: Conversion completed, embedding as ${imageType}, width=${scaledWidth}, height=${scaledHeight}`
-      );
-      paragraphs.push(
-        createImageParagraph(
-          processedImageData,
-          scaledWidth,
-          scaledHeight,
-          imageType,
-          indent
-        )
-      );
-    }
-  } catch (err: unknown) {
-    console.error(`ERROR adding image: ${err}`);
-
-    // In case of error, add an error paragraph
-    paragraphs.push(
-      createErrorParagraph(
-        `[Unable to embed image: ${file.name || "unnamed file"} - Error: ${
-          err instanceof Error ? err.message : String(err)
-        }]`,
-        indent
-      )
-    );
-
-    // Also add a link to the file as fallback
-    if (file.permalink) {
-      paragraphs.push(
-        createFileLinkParagraph(
-          "Image file (link)",
-          file.name || "image file",
-          file.permalink,
-          indent
-        )
-      );
-    }
-  }
 }
