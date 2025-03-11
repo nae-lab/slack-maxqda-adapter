@@ -11,6 +11,17 @@
   ```
 - pandoc がシステムにインストールされていることを確認してください。
 
+## 必要な Slack トークンスコープ
+
+- `channels:history`
+- `channels:read`
+- `files:read`
+- `groups:history`
+- `remote_files:read`
+- `team:read`
+- `users:read`
+
+
 ## ツールの詳細
 このツールは、指定したチャンネルおよび日付範囲のSlackメッセージを取得します。具体的には:
 - Slack API を使用してメッセージを問い合わせます。

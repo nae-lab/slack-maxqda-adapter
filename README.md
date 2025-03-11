@@ -13,6 +13,17 @@
   ```
 - Ensure pandoc is installed on your system.
 
+## Required Slack Token Scopes
+
+- `channels:history`
+- `channels:read`
+- `files:read`
+- `groups:history`
+- `remote_files:read`
+- `team:read`
+- `users:read`
+
+
 ## Tool Details
 This tool retrieves Slack messages from a specified channel and date range. It:
 - Queries the Slack API for messages.

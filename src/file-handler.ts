@@ -71,7 +71,7 @@ export async function downloadSlackFile(file: SlackFile): Promise<string> {
     return file.permalink || "";
   }
 
-  // Step 1: Attempt private URL download first
+  // Attempt private URL download
   let downloadSuccess = false;
   for (const url of [file.url_private_download, file.url_private].filter(
     Boolean
@@ -105,83 +105,6 @@ export async function downloadSlackFile(file: SlackFile): Promise<string> {
         `Private download failed using ${url}: ${(err as Error).message}`
       );
       // Try next URL if this one fails
-    }
-  }
-
-  // Step 2: Private download failed, now try to make the file public
-  let madePublic = false;
-  let publicUrl: string | null = null;
-  let sharedFile: SharedPublicFile = file as SharedPublicFile;
-
-  try {
-    console.log(`Attempting to make file ${file.id} temporarily public...`);
-    const shareResponse = await slackClient.files.sharedPublicURL({
-      file: file.id,
-    });
-    if (shareResponse.ok && shareResponse.file) {
-      sharedFile = shareResponse.file;
-      madePublic = true;
-      publicUrl = constructFileUrl(sharedFile);
-      console.log(`File ${file.id} is now temporarily public`);
-    }
-  } catch (shareError: any) {
-    if (shareError.data && shareError.data.error === "already_public") {
-      console.log(`File ${file.id} was already public`);
-      madePublic = true;
-      publicUrl = constructFileUrl(file as SharedPublicFile);
-    } else if (
-      shareError.data &&
-      (shareError.data.error === "file_not_found" ||
-        shareError.data.error === "not_allowed")
-    ) {
-      console.log(
-        `Cannot make file ${file.id} public: ${shareError.data.error} - likely from Slack Connect`
-      );
-    } else {
-      console.warn(
-        `Error making file ${file.id} public: ${shareError.message}`
-      );
-    }
-  }
-
-  if (publicUrl) {
-    try {
-      console.log(`Trying public download from: ${publicUrl}`);
-      const headers: Record<string, string> = {};
-      // No auth header needed for public URL
-      const response = await axios({
-        method: "GET",
-        url: publicUrl,
-        headers,
-        responseType: "stream",
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-      });
-      const writer = fs.createWriteStream(outputPath);
-      response.data.pipe(writer);
-      await new Promise((resolve, reject) => {
-        writer.on("finish", resolve);
-        writer.on("error", reject);
-      });
-      console.log(`Successfully downloaded file to ${outputPath}`);
-      downloadSuccess = true;
-    } catch (err: any) {
-      console.error(
-        `Public download failed using ${publicUrl}: ${(err as Error).message}`
-      );
-    }
-  }
-
-  // Step 3: Always revoke public access if it was granted
-  if (madePublic) {
-    try {
-      console.log(`Revoking public access for file ${file.id}...`);
-      await slackClient.files.revokePublicURL({ file: file.id });
-      console.log(`Successfully revoked public access for file ${file.id}`);
-    } catch (revokeError: any) {
-      console.warn(
-        `Failed to revoke public access for file ${file.id}: ${revokeError.message}`
-      );
     }
   }
 
