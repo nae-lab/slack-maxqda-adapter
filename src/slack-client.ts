@@ -1,6 +1,12 @@
 import { slackClient } from "./config";
 import { MessageElement, MessagesResult } from "./types";
 
+// Add this function to export the token for file downloads
+export function getSlackToken(): string {
+  // Return the token from environment or wherever you're storing it
+  return process.env.SLACK_TOKEN || '';
+}
+
 export async function retrieveMessages(
   channelId: string,
   oldest: number,

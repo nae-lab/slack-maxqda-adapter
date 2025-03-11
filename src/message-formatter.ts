@@ -113,7 +113,8 @@ ${indentStr}${await formatReactionsToMarkdown(message.reactions ?? [])}
 }
 
 export async function extractMessageText(
-  message: MessageElement
+  message: MessageElement,
+  includeFiles: boolean = true
 ): Promise<string> {
   let messageText = message.text ?? "";
 
@@ -138,8 +139,9 @@ export async function extractMessageText(
     }
   }
 
-  // Process files from message.files array
-  if (message.files && Array.isArray(message.files)) {
+  // Process files from message.files array only if includeFiles is true
+  // For DOCX export, we'll handle files separately, so we can skip this step
+  if (includeFiles && message.files && Array.isArray(message.files)) {
     for (const file of message.files as MessageFile[]) {
       try {
         // Convert to SlackFile using the utility function
