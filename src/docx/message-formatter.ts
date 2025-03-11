@@ -26,6 +26,8 @@ import {
   createErrorParagraph,
   createEndSpeakerParagraph,
   createReactionParagraphs,
+  createCodeBlockParagraphs,
+  createBlockquoteParagraph,
 } from "./paragraph-formatters";
 
 // Create all paragraphs for a message
@@ -64,16 +66,16 @@ export async function createMessageParagraphs(
     )
   );
 
-  // Process and add message text - make sure not to include markdown image references
-  let messageText = await extractMessageText(message, false); // Skip file processing
-  messageText = await replaceMentionToUserName(messageText);
+  // Process message blocks if available (Slack Block Kit)
+  if (message.blocks && message.blocks.length > 0) {
+    await processMessageBlocks(message.blocks, paragraphs, indent);
+  } else {
+    // Process and add message text - make sure not to include markdown image references
+    let messageText = await extractMessageText(message, false); // Skip file processing
+    messageText = await replaceMentionToUserName(messageText);
 
-  // Split message text into paragraphs and add each as a separate paragraph
-  const textParagraphs = messageText.split("\n");
-  for (const textParagraph of textParagraphs) {
-    if (textParagraph.trim()) {
-      paragraphs.push(createTextParagraph(textParagraph, indent));
-    }
+    // Process the message text for markdown formatting
+    await processMessageText(messageText, paragraphs, indent);
   }
 
   // Add files/images directly to the document
@@ -100,8 +102,342 @@ export async function createMessageParagraphs(
   return paragraphs;
 }
 
+// Helper function to process message text and identify special formatting
+async function processMessageText(
+  messageText: string,
+  paragraphs: Paragraph[],
+  indent: Record<string, any> = {}
+): Promise<void> {
+  // Detect code blocks
+  const codeBlockRegex = /```([\s\S]*?)```/g;
+
+  // Split by code blocks first
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  // Process code blocks
+  while ((match = codeBlockRegex.exec(messageText)) !== null) {
+    // Add text before code block
+    const textBefore = messageText.substring(lastIndex, match.index).trim();
+    if (textBefore) {
+      // Process any blockquotes in the text before
+      await processTextWithBlockquotes(textBefore, paragraphs, indent);
+    }
+
+    // Add code block
+    const codeContent = match[1];
+    paragraphs.push(...createCodeBlockParagraphs(codeContent, indent));
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text after last code block
+  const textAfter = messageText.substring(lastIndex).trim();
+  if (textAfter) {
+    await processTextWithBlockquotes(textAfter, paragraphs, indent);
+  }
+}
+
+// Helper to process text with blockquotes
+async function processTextWithBlockquotes(
+  text: string,
+  paragraphs: Paragraph[],
+  indent: Record<string, any> = {}
+): Promise<void> {
+  // Split the text by line
+  const lines = text.split("\n");
+  let currentBlockquote: string[] = [];
+  let currentText: string[] = [];
+
+  // Process each line to group blockquotes and normal text
+  for (const line of lines) {
+    const blockquoteMatch = line.match(/^>\s(.*)/);
+
+    if (blockquoteMatch) {
+      // If we have accumulated text, flush it first
+      if (currentText.length > 0) {
+        const textContent = currentText.join("\n");
+        paragraphs.push(createTextParagraph(textContent, indent));
+        currentText = [];
+      }
+
+      // Add to current blockquote
+      currentBlockquote.push(blockquoteMatch[1]);
+    } else {
+      // If we have accumulated blockquote, flush it first
+      if (currentBlockquote.length > 0) {
+        const blockquoteContent = currentBlockquote.join("\n");
+        paragraphs.push(createBlockquoteParagraph(blockquoteContent, indent));
+        currentBlockquote = [];
+      }
+
+      // Add to current text if the line is not empty
+      if (line.trim()) {
+        currentText.push(line);
+      } else if (currentText.length > 0) {
+        // Empty line - add paragraph break
+        const textContent = currentText.join("\n");
+        paragraphs.push(createTextParagraph(textContent, indent));
+        currentText = [];
+      }
+    }
+  }
+
+  // Flush any remaining content
+  if (currentBlockquote.length > 0) {
+    const blockquoteContent = currentBlockquote.join("\n");
+    paragraphs.push(createBlockquoteParagraph(blockquoteContent, indent));
+  }
+
+  if (currentText.length > 0) {
+    const textContent = currentText.join("\n");
+    paragraphs.push(createTextParagraph(textContent, indent));
+  }
+}
+
+// Process Slack Block Kit blocks
+async function processMessageBlocks(
+  blocks: any[],
+  paragraphs: Paragraph[],
+  indent: Record<string, any> = {}
+): Promise<void> {
+  for (const block of blocks) {
+    switch (block.type) {
+      case "section":
+        if (block.text) {
+          // Process text with markdown formatting
+          await processMessageText(block.text.text, paragraphs, indent);
+        }
+
+        // Process fields if any
+        if (block.fields && block.fields.length > 0) {
+          for (const field of block.fields) {
+            await processMessageText(field.text, paragraphs, indent);
+          }
+        }
+        break;
+
+      case "rich_text":
+        // Process rich text elements
+        if (block.elements) {
+          for (const element of block.elements) {
+            await processRichTextElement(element, paragraphs, indent);
+          }
+        }
+        break;
+
+      case "divider":
+        // Add a divider line
+        paragraphs.push(createSeparatorParagraph(indent));
+        break;
+
+      case "image":
+        // Add image title if available
+        if (block.title) {
+          paragraphs.push(createImageTitleParagraph(block.title.text, indent));
+        }
+
+        // Try to download and embed the image
+        try {
+          // If there's an image URL, try to process it
+          if (block.image_url) {
+            paragraphs.push(
+              createFileLinkParagraph(
+                "Image",
+                block.alt_text || "Image",
+                block.image_url,
+                indent
+              )
+            );
+          }
+        } catch (error) {
+          paragraphs.push(
+            createErrorParagraph(
+              `[Error embedding image: ${block.alt_text || "image"}]`,
+              indent
+            )
+          );
+        }
+        break;
+
+      case "context":
+        // Process context elements
+        if (block.elements && block.elements.length > 0) {
+          const contextTexts: string[] = [];
+
+          for (const element of block.elements) {
+            if (element.type === "plain_text" || element.type === "mrkdwn") {
+              contextTexts.push(element.text);
+            }
+          }
+
+          if (contextTexts.length > 0) {
+            // Add context text with smaller font and italics
+            paragraphs.push(
+              createTextParagraph(contextTexts.join(" "), {
+                ...indent,
+                size: styles.fontSize.small,
+                italics: true,
+              })
+            );
+          }
+        }
+        break;
+
+      default:
+        // For unhandled block types, try to extract text
+        if (block.text) {
+          const text =
+            typeof block.text === "string" ? block.text : block.text.text || "";
+
+          await processMessageText(text, paragraphs, indent);
+        }
+    }
+  }
+}
+
+// Process rich text element
+async function processRichTextElement(
+  element: any,
+  paragraphs: Paragraph[],
+  indent = {}
+): Promise<void> {
+  switch (element.type) {
+    case "rich_text_section":
+      // Combine all text elements in the section
+      let sectionText = "";
+
+      if (element.elements) {
+        for (const textElement of element.elements) {
+          if (textElement.type === "text") {
+            sectionText += textElement.text || "";
+          } else if (textElement.type === "link") {
+            // Fix for undefined link text - use URL as fallback
+            const linkText = textElement.text || textElement.url || "link";
+            sectionText += `[${linkText}](${textElement.url})`;
+          } else if (textElement.type === "user") {
+            const userName = textElement.user_id
+              ? await getUserName(textElement.user_id)
+              : "user";
+            sectionText += `@${userName}`;
+          } else if (textElement.type === "emoji") {
+            sectionText += `:${textElement.name}:`;
+          } else if (textElement.type === "channel") {
+            sectionText += `#${textElement.channel_id || "channel"}`;
+          }
+        }
+      }
+
+      if (sectionText) {
+        paragraphs.push(createTextParagraph(sectionText, indent));
+      }
+      break;
+
+    case "rich_text_preformatted":
+      // Handle preformatted text (code blocks)
+      let codeText = "";
+
+      if (element.elements) {
+        for (const textElement of element.elements) {
+          if (textElement.type === "text") {
+            codeText += textElement.text || "";
+          }
+        }
+      }
+
+      if (codeText) {
+        paragraphs.push(...createCodeBlockParagraphs(codeText, indent));
+      }
+      break;
+
+    case "rich_text_quote":
+      // Handle quote blocks
+      let quoteText = "";
+
+      if (element.elements) {
+        for (const textElement of element.elements) {
+          if (textElement.type === "text") {
+            quoteText += textElement.text || "";
+          } else if (textElement.type === "link") {
+            // Fix for undefined link text in quotes
+            const linkText = textElement.text || textElement.url || "link";
+            quoteText += `[${linkText}](${textElement.url})`;
+          }
+        }
+      }
+
+      if (quoteText) {
+        paragraphs.push(createBlockquoteParagraph(quoteText, indent));
+      }
+      break;
+
+    case "rich_text_list":
+      // Handle lists
+      await processRichTextList(element, paragraphs, indent);
+      break;
+  }
+}
+
+// Process rich text lists
+async function processRichTextList(
+  list: any,
+  paragraphs: Paragraph[],
+  indent: Record<string, any> = {}
+): Promise<void> {
+  if (!list.elements) return;
+
+  const isOrdered = list.style === "ordered";
+  let counter = 1;
+
+  for (const item of list.elements) {
+    if (item.type === "rich_text_list_item") {
+      let itemText = isOrdered ? `${counter}. ` : "• ";
+
+      // Process item elements
+      if (item.elements) {
+        for (const element of item.elements) {
+          if (element.type === "rich_text_section") {
+            let sectionText = "";
+
+            // Process section elements
+            if (element.elements) {
+              for (const textElement of element.elements) {
+                if (textElement.type === "text") {
+                  sectionText += textElement.text || "";
+                } else if (textElement.type === "link") {
+                  // Fix for undefined link text in list items
+                  const linkText =
+                    textElement.text || textElement.url || "link";
+                  sectionText += `[${linkText}](${textElement.url})`;
+                }
+              }
+            }
+
+            itemText += sectionText;
+          }
+        }
+      }
+
+      // Add the list item
+      if (itemText) {
+        paragraphs.push(
+          createTextParagraph(itemText, {
+            ...indent,
+            indent: {
+              left: (indent.left || 0) + styles.indent,
+              hanging: isOrdered ? 360 : 240, // Adjust hanging indent based on list type
+            },
+          })
+        );
+      }
+
+      if (isOrdered) counter++;
+    }
+  }
+}
+
 // Helper function to ensure output directories exist
-function ensureDirectoriesExist() {
+function ensureDirectoriesExist(): string {
   const filesDir = path.join(process.cwd(), "out", "files");
   if (!fs.existsSync(filesDir)) {
     fs.mkdirSync(filesDir, { recursive: true });
@@ -114,10 +450,10 @@ function ensureDirectoriesExist() {
 async function addFilesParagraphs(
   paragraphs: Paragraph[],
   files: MessageFile[],
-  indent = {}
+  indent: Record<string, any> = {}
 ): Promise<void> {
   // Ensure our debug directory exists
-  const debugFilesDir = ensureDirectoriesExist();
+  ensureDirectoriesExist();
 
   for (const file of files) {
     try {
@@ -141,13 +477,7 @@ async function addFilesParagraphs(
             }
 
             // Process the image
-            await addImageParagraphs(
-              paragraphs,
-              file,
-              fileResult,
-              fileResult,
-              indent
-            );
+            await addImageParagraphs(paragraphs, file, fileResult, indent);
           } else {
             // This is a permalink for an image - add a link
             paragraphs.push(
@@ -215,8 +545,7 @@ async function addImageParagraphs(
   paragraphs: Paragraph[],
   file: MessageFile,
   filePath: string,
-  debugFilePath: string,
-  indent = {}
+  indent: Record<string, any> = {}
 ): Promise<void> {
   // Add title paragraph for the image first
   paragraphs.push(createImageTitleParagraph(file.name || "", indent));

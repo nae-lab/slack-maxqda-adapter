@@ -87,7 +87,8 @@ export function processUrls(text: string): (TextRun | ExternalHyperlink)[] {
       result.push(
         new TextRun({
           text: remainingText,
-          ...styles.messageText,
+          size: styles.fontSize.normal,
+          color: styles.colors.primaryText,
         })
       );
       break;
@@ -97,7 +98,8 @@ export function processUrls(text: string): (TextRun | ExternalHyperlink)[] {
         result.push(
           new TextRun({
             text: remainingText.substring(0, nextUrlStart),
-            ...styles.messageText,
+            size: styles.fontSize.normal,
+            color: styles.colors.primaryText,
           })
         );
       }
