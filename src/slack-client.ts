@@ -177,3 +177,10 @@ export async function generateSlackMessageUrl(
 
   return messageUrl;
 }
+
+export async function getChannelName(channelId: string): Promise<string> {
+  const info = await slackClient.conversations.info({ channel: channelId });
+  return info.ok && info.channel && info.channel.name
+    ? info.channel.name
+    : channelId;
+}

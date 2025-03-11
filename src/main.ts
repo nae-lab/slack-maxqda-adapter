@@ -4,7 +4,10 @@ dotenv.config({
 });
 
 import { args } from "./args";
-import { fetchChannelMessagesForDateRange } from "./slack-client";
+import {
+  fetchChannelMessagesForDateRange,
+  getChannelName,
+} from "./slack-client";
 import { exportToWordDocument } from "./docx-formatter";
 import * as fs from "fs";
 import path from "path";
@@ -32,13 +35,16 @@ async function main() {
     return;
   }
 
-  // Generate filename based on whether it's a single day or range
+  // Obtain channel name from Slack API using channelId
+  const channelName = await getChannelName(args.channelId);
+
+  // Generate filename including the channel name
   const isSingleDay = startDate === endDate;
   const outputPath = path.join(
     outDir,
     isSingleDay
-      ? `slack-log-${startDate}.docx`
-      : `slack-log-${startDate}--${endDate}.docx`
+      ? `${channelName}-${startDate}.docx`
+      : `${channelName}-${startDate}--${endDate}.docx`
   );
 
   // Create document with messages
