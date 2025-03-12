@@ -1,24 +1,10 @@
 import { ImageRun, Paragraph, TextRun } from "docx";
 import axios from "axios";
-import uEmojiParser from "universal-emoji-parser";
 import { Reaction } from "../../types";
 import { getUserName } from "../../slack-client";
 import { styles } from "../styles";
 import { getMappedImageType } from "../image-utils";
-// New import for emoji data (ensure the path is correct)
-import emojiData from "emoji-datasource/emoji.json";
-
-// Helper function to convert unified string to actual emoji
-function unifiedToEmoji(unified: string): string {
-  const codePoints = unified.split("-").map((cp) => parseInt(cp, 16));
-  return String.fromCodePoint(...codePoints);
-}
-
-// Build a mapping from short name to Unicode emoji
-const emojiMap: Record<string, string> = {};
-emojiData.forEach((emoji: any) => {
-  emojiMap[emoji.short_name.toLowerCase()] = unifiedToEmoji(emoji.unified);
-});
+import { getEmojiRepresentation } from "../emoji-utils";
 
 export async function createReactionParagraphs(
   reactions: Reaction[],
@@ -79,10 +65,9 @@ export async function createReactionParagraphs(
         );
       }
     } else {
-      // Standard emoji: lookup in emojiMap first, then fallback to uEmojiParser
+      // Standard emoji: use the utility function
       const mappedEmoji = reaction.name
-        ? emojiMap[reaction.name.toLowerCase()] ||
-          uEmojiParser.parseToUnicode(`:${reaction.name}:`)
+        ? getEmojiRepresentation(reaction.name)
         : "";
       reactionChildren.push(
         new TextRun({

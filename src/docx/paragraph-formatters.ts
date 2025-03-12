@@ -5,9 +5,11 @@ import {
   Paragraph,
   ParagraphChild,
   TextRun,
+  UnderlineType,
 } from "docx";
 import { styles } from "./styles";
 import { getMappedImageType } from "./image-utils";
+import { getEmojiRepresentation } from "./emoji-utils";
 
 // Helper for creating plain text runs
 export function plainTextRun(text: string, options = {}) {
@@ -132,7 +134,7 @@ function formatMarkdownLine(text: string): ParagraphChild[] {
   const result: ParagraphChild[] = [];
 
   const combinedPattern = new RegExp(
-    "(\\*\\*(.*?)\\*\\*|__(.*?)__)|(\\*(.*?)\\*|_(.*?)_)|(`(.*?)`)|(\\[(.*?)\\]\\((.*?)\\))|(https?:\\/\\/[^\\s]+)",
+    '(\\*\\*(.*?)\\*\\*|__(.*?)__)|(\\*(.*?)\\*|_(.*?)_)|(`(.*?)`)|(\\[(.*?)\\]\\((.*?)\\))|(<span class="underline">(.*?)<\\/span>)|(https?:\\/\\/[^\\s]+)|(:([\\w+-]+):)',
     "g"
   );
 
@@ -171,10 +173,28 @@ function formatMarkdownLine(text: string): ParagraphChild[] {
       const linkUrl = match[11] || "";
       result.push(hyperlinkRun(linkText, linkUrl));
     }
-    // Raw link
+    // Underline span
     else if (match[12]) {
-      const rawUrl = match[12];
+      const content = match[13] || "";
+      result.push(
+        new TextRun({
+          text: content,
+          underline: {
+            type: UnderlineType.SINGLE,
+          },
+        })
+      );
+    }
+    // Raw link
+    else if (match[14]) {
+      const rawUrl = match[14];
       result.push(hyperlinkRun(rawUrl, rawUrl));
+    }
+    // Emoji shortcode
+    else if (match[15]) {
+      const emojiName = match[16] || "";
+      const emoji = getEmojiRepresentation(emojiName);
+      result.push(plainTextRun(emoji));
     }
     lastIndex = combinedPattern.lastIndex;
   }
