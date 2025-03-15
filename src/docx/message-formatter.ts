@@ -56,10 +56,11 @@ export async function createMessageParagraphs(
 
   // Process message blocks if available (Slack Block Kit)
   if (message.blocks && message.blocks.length > 0) {
-    await processMessageBlocks(asBlocks(message.blocks), paragraphs, indent);
+    const blocksAfterConversion = asBlocks(message.blocks);
+    await processMessageBlocks(blocksAfterConversion, paragraphs, indent);
   } else {
-    // Process and add message text - make sure not to include markdown image references
-    let messageText = await extractMessageText(message, false); // Skip file processing
+    // メッセージテキストを処理して追加
+    let messageText = await extractMessageText(message, true);
     messageText = await replaceMentionToUserName(messageText);
 
     // Process the message text for markdown formatting

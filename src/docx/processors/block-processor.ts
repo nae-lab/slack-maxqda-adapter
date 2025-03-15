@@ -1,5 +1,5 @@
 import { Paragraph } from "docx";
-import { getUserName } from "../../slack-client";
+import { getUserName, getUserGroupName } from "../../slack-client";
 import { styles } from "../styles";
 import { Block } from "../../types";
 import {
@@ -63,13 +63,35 @@ async function processSectionBlock(
     await processMessageText(block.text.text, paragraphs, indent);
   } else if (block.text && typeof block.text === "string") {
     await processMessageText(block.text, paragraphs, indent);
-  }
+  } else if (block.elements && Array.isArray(block.elements)) {
+    // sectionブロックのelementsからテキストを抽出
+    let extractedText = "";
 
-  if (block.fields?.length > 0) {
-    for (const field of block.fields) {
-      await processMessageText(field.text, paragraphs, indent);
+    for (const element of block.elements) {
+      if (element.type === "text") {
+        extractedText += element.text || "";
+      } else if (element.type === "rich_text_section" && element.elements) {
+        for (const textElement of element.elements) {
+          if (textElement.type === "text") {
+            extractedText += textElement.text || "";
+          } else if (textElement.type === "link") {
+            extractedText += `[${
+              textElement.text || textElement.url || "link"
+            }](${textElement.url})`;
+          }
+        }
+      }
+    }
+
+    if (extractedText) {
+      await processMessageText(extractedText, paragraphs, indent);
     }
   }
+  if (block.fields?.length > 0) {
+      for (const field of block.fields) {
+        await processMessageText(field.text, paragraphs, indent);
+      }
+    }
 }
 
 async function processRichTextElement(
@@ -129,6 +151,11 @@ async function formatTextElement(element: any): Promise<string> {
         ? await getUserName(element.user_id)
         : "user";
       return `@${userName}`;
+    case "usergroup":
+      const groupName = element.usergroup_id
+        ? await getUserGroupName(element.usergroup_id)
+        : "group";
+      return `@${groupName}`;
     case "emoji":
       return `:${element.name}:`;
     case "channel":
@@ -147,6 +174,31 @@ async function processRichTextBlock(
     await processMessageText(block.text.text, paragraphs, indent);
   } else if (block.text && typeof block.text === "string") {
     await processMessageText(block.text, paragraphs, indent);
+  } else if (block.elements && Array.isArray(block.elements)) {
+    let extractedText = "";
+
+    // rich_text_section要素を探して処理
+    for (const element of block.elements) {
+      if (element.type === "rich_text_section" && element.elements) {
+        for (const textElement of element.elements) {
+          if (textElement.type === "text") {
+            extractedText += textElement.text || "";
+          } else if (textElement.type === "link") {
+            extractedText += `[${
+              textElement.text || textElement.url || "link"
+            }](${textElement.url})`;
+          } else if (textElement.type === "usergroup") {
+            const groupId = textElement.usergroup_id || "";
+            const groupName = await getUserGroupName(groupId);
+            extractedText += `@${groupName}`;
+          }
+        }
+      }
+    }
+
+    if (extractedText) {
+      await processMessageText(extractedText, paragraphs, indent);
+    }
   }
 }
 
@@ -214,6 +266,31 @@ async function processDefaultBlock(
     await processMessageText(block.text.text, paragraphs, indent);
   } else if (block.text && typeof block.text === "string") {
     await processMessageText(block.text, paragraphs, indent);
+  } else if (block.elements && Array.isArray(block.elements)) {
+    // elementsからテキストを抽出（デフォルト処理）
+    let extractedText = "";
+
+    for (const element of block.elements) {
+      if (element.type === "text") {
+        extractedText += element.text || "";
+      } else if (element.type === "rich_text_section" && element.elements) {
+        for (const textElement of element.elements) {
+          if (textElement.type === "text") {
+            extractedText += textElement.text || "";
+          } else if (textElement.type === "link") {
+            extractedText += `[${
+              textElement.text || textElement.url || "link"
+            }](${textElement.url})`;
+          } else if (textElement.type === "usergroup") {
+            extractedText += `@${textElement.usergroup_id || "group"}`;
+          }
+        }
+      }
+    }
+
+    if (extractedText) {
+      await processMessageText(extractedText, paragraphs, indent);
+    }
   }
 }
 

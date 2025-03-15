@@ -21,15 +21,24 @@ export {
 // より汎用的なBlock型定義（PurpleBlockを包含するように）
 export interface Block {
   type: string | undefined;
-  text?: {
-    text: string;
-    [key: string]: any;
-  } | string | undefined;
+  // textプロパティはblockのタイプによっては存在しない場合がある
+  // 特にrich_textタイプのブロックではtextではなくelementsにコンテンツが含まれる
+  text?:
+    | {
+        text: string;
+        [key: string]: any;
+      }
+    | string
+    | undefined;
+  // elementsはrich_textタイプなどで重要なプロパティ
+  // rich_textの場合、このプロパティにテキストコンテンツが含まれる
   elements?: Array<any>;
   [key: string]: any;
 }
 
 // Block型をMessageElement内のblocksにも使えるようにする型変換関数
+// rich_textタイプのブロックなどを処理する際は、
+// block.textではなくblock.elementsからコンテンツを抽出する必要がある
 export function asBlocks(blocks: any[]): Block[] {
   return blocks as Block[];
 }

@@ -102,7 +102,6 @@ export function createUsernameTimestampParagraph(
 export function createTextParagraphs(text: string, options = {}): Paragraph[] {
   // Handle basic Markdown formatting
   const formattedText = formatMarkdownText(text, options);
-
   return formattedText;
 }
 
@@ -112,6 +111,7 @@ function formatMarkdownText(text: string, options = {}): Paragraph[] {
 
   // split text into lines
   const lines = text.split("\n");
+
   for (const line of lines) {
     const children = formatMarkdownLine(line);
     result.push(

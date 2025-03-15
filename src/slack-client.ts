@@ -239,3 +239,38 @@ export async function getChannelName(channelId: string): Promise<string> {
     ? info.channel.name
     : channelId;
 }
+
+/**
+ * ユーザーグループIDからグループ名を取得する
+ * 
+ * @param usergroupId ユーザーグループID（S0XXXXXXXX形式）
+ * @returns グループ名またはID（取得できない場合）
+ */
+export async function getUserGroupName(usergroupId: string | undefined): Promise<string> {
+  if (!usergroupId) {
+    return "Unknown Group";
+  }
+
+  // IDがSで始まらない場合、または予期しない形式の場合
+  if (!usergroupId.match(/^S[A-Z0-9]+$/)) {
+    return usergroupId;
+  }
+
+  try {
+    // ユーザーグループ一覧を取得
+    const response = await slackClient.usergroups.list();
+    
+    if (response.ok && response.usergroups) {
+      // 指定されたIDのユーザーグループを検索
+      const usergroup = response.usergroups.find(group => group.id === usergroupId);
+      
+      // グループが見つかった場合は名前を返す、なければIDをそのまま返す
+      return usergroup?.name || usergroupId;
+    }
+    
+    return usergroupId;
+  } catch (error) {
+    console.error(`Error fetching usergroup info for ${usergroupId}:`, error);
+    return usergroupId;
+  }
+}
