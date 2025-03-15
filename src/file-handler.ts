@@ -4,7 +4,7 @@ import axios from "axios";
 import { SlackFile } from "./types";
 import { File as SharedPublicFile } from "@slack/web-api/dist/types/response/FilesSharedPublicURLResponse";
 import { getSlackToken } from "./slack-client";
-import { slackClient } from "./config";
+import { slackClient, getFilesDir, ensureDirectoryExists } from "./config";
 
 // Ensure download directory exists
 function ensureDownloadDirectory(directory: string) {
@@ -53,9 +53,11 @@ function constructFileUrl(sharedFile: SharedPublicFile): string | null {
 }
 
 // Download file from Slack
-export async function downloadSlackFile(file: SlackFile): Promise<string> {
-  const outputDir = path.join(process.cwd(), "out", "files");
-  ensureDownloadDirectory(outputDir);
+export async function downloadSlackFile(
+  file: SlackFile,
+  channelName: string = ""
+): Promise<string> {
+  const outputDir = ensureDirectoryExists(getFilesDir(channelName));
 
   // Generate a unique filename
   const timestamp = Date.now();

@@ -9,11 +9,13 @@ import {
   createDateHeadingParagraph,
   createPageBreakParagraph,
 } from "./docx/paragraph-formatters";
+import { ensureDirectoryExists } from "./config";
 
 // Main export function to create a Word document from Slack messages
 export async function exportToWordDocument(
   messagesByDate: { date: string; messages: MessageElement[] }[],
   channelId: string,
+  channelName: string,
   outputPath: string
 ): Promise<string> {
   // Create a container for our document children
@@ -37,7 +39,8 @@ export async function exportToWordDocument(
       const messageChildren = await createMessageParagraphs(
         message,
         channelId,
-        0
+        0,
+        channelName
       );
       documentChildren.push(...messageChildren);
 
@@ -53,7 +56,8 @@ export async function exportToWordDocument(
           const threadChildren = await createMessageParagraphs(
             threadMessages[i],
             channelId,
-            1
+            1,
+            channelName
           );
           documentChildren.push(...threadChildren);
         }
@@ -73,9 +77,7 @@ export async function exportToWordDocument(
 
   // Ensure output directory exists
   const outDir = path.dirname(outputPath);
-  if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true });
-  }
+  ensureDirectoryExists(outDir);
 
   // Write the document to file
   const buffer = await Packer.toBuffer(doc);

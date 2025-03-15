@@ -1,39 +1,28 @@
 import { Paragraph } from "docx";
-import * as fs from "fs";
-import path from "path";
-import { MessageElement, MessageFile } from "../types";
+import { MessageElement, MessageFile, asBlocks } from "../types";
 import { getUserName } from "../slack-client";
-import {
-  replaceMentionToUserName,
-  extractMessageText,
-} from "../message-formatter";
-import {
-  getImageDimensions,
-  getMappedImageType,
-  ensureCompatibleImage,
-} from "./image-utils";
+import { replaceMentionToUserName, extractMessageText } from "./text-utils";
 import { generateSlackMessageUrl } from "../slack-client";
 import { styles } from "./styles";
 import {
   createSeparatorParagraph,
   createSpeakerParagraph,
   createUsernameTimestampParagraph,
-  createFileLinkParagraph,
-  createImageTitleParagraph,
-  createImageParagraph,
-  createErrorParagraph,
   createEndSpeakerParagraph,
 } from "./paragraph-formatters";
-import { processMessageBlocks } from "./processors/block-processor";
-import { processMessageText } from "./processors/text-processor";
-import { addFilesParagraphs } from "./processors/file-processor";
-import { createReactionParagraphs } from "./processors/reaction-processor";
+import {
+  processMessageBlocks,
+  processMessageText,
+  addFilesParagraphs,
+  createReactionParagraphs,
+} from "./processors";
 
 // Create all paragraphs for a message
 export async function createMessageParagraphs(
   message: MessageElement,
   channelId: string,
-  indentLevel: number
+  indentLevel: number,
+  channelName: string = ""
 ): Promise<Paragraph[]> {
   const paragraphs: Paragraph[] = [];
   const username = message.user ? await getUserName(message.user) : "No Name";
@@ -67,7 +56,7 @@ export async function createMessageParagraphs(
 
   // Process message blocks if available (Slack Block Kit)
   if (message.blocks && message.blocks.length > 0) {
-    await processMessageBlocks(message.blocks, paragraphs, indent);
+    await processMessageBlocks(asBlocks(message.blocks), paragraphs, indent);
   } else {
     // Process and add message text - make sure not to include markdown image references
     let messageText = await extractMessageText(message, false); // Skip file processing
@@ -81,6 +70,7 @@ export async function createMessageParagraphs(
   if (message.files && Array.isArray(message.files)) {
     await addFilesParagraphs(paragraphs, message.files as MessageFile[], {
       indent,
+      channelName,
     });
   }
 

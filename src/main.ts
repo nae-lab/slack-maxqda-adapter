@@ -9,19 +9,21 @@ import {
   getChannelName,
 } from "./slack-client";
 import { exportToWordDocument } from "./docx-formatter";
-import * as fs from "fs";
+import { exportToMarkdown } from "./markdown/markdown-formatter";
 import path from "path";
+import { getChannelOutputDir, ensureDirectoryExists } from "./config";
 
 async function main() {
-  // Ensure output directory exists
-  const outDir = "out";
-  if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true });
-  }
-
   // Set end date equal to start date if not provided (single day)
   const startDate = args.startDate;
   const endDate = args.endDate || startDate;
+
+  // Obtain channel name from Slack API using channelId
+  const channelName = await getChannelName(args.channelId);
+  console.log(`Working with channel: ${channelName}`);
+
+  // Create channel-specific output directory
+  const channelOutDir = ensureDirectoryExists(getChannelOutputDir(channelName));
 
   // Fetch messages for date range (works for single day too when startDate = endDate)
   const dateRangeResults = await fetchChannelMessagesForDateRange(
@@ -35,23 +37,38 @@ async function main() {
     return;
   }
 
-  // Obtain channel name from Slack API using channelId
-  const channelName = await getChannelName(args.channelId);
-
   // Generate filename including the channel name
   const isSingleDay = startDate === endDate;
+  const extension = args.format === "md" ? "md" : "docx";
   const outputPath = path.join(
-    outDir,
+    channelOutDir,
     isSingleDay
-      ? `${channelName}-${startDate}.docx`
-      : `${channelName}-${startDate}--${endDate}.docx`
+      ? `${channelName}_${startDate}.${extension}`
+      : `${channelName}_${startDate}--${endDate}.${extension}`
   );
 
-  // Create document with messages
-  await exportToWordDocument(dateRangeResults, args.channelId, outputPath);
+  // Create document with messages based on format
+  if (args.format === "md") {
+    await exportToMarkdown(
+      dateRangeResults,
+      args.channelId,
+      channelName,
+      outputPath
+    );
+  } else {
+    await exportToWordDocument(
+      dateRangeResults,
+      args.channelId,
+      channelName,
+      outputPath
+    );
+  }
 
   // Output the path for scripts to use
-  console.log(outputPath);
+  console.log(`Output file created: ${outputPath}`);
 }
 
-main();
+main().catch((err) => {
+  console.error("Error in main process:", err);
+  process.exit(1);
+});

@@ -97,7 +97,11 @@ export async function retrieveThreadMessages(
   return result.messages || [];
 }
 
-export async function getUserName(userId: string) {
+export async function getUserName(userId: string | undefined) {
+  if (!userId) {
+    return "Unknown User";
+  }
+
   const userInfo = await slackClient.users.info({
     user: userId,
   });
@@ -105,7 +109,8 @@ export async function getUserName(userId: string) {
     userInfo.user?.profile?.real_name_normalized ||
     userInfo.user?.profile?.real_name ||
     userInfo.user?.real_name ||
-    userInfo.user?.profile?.display_name
+    userInfo.user?.profile?.display_name ||
+    userId
   );
 }
 

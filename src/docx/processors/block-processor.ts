@@ -1,6 +1,7 @@
 import { Paragraph } from "docx";
 import { getUserName } from "../../slack-client";
 import { styles } from "../styles";
+import { Block } from "../../types";
 import {
   createSeparatorParagraph,
   createImageTitleParagraph,
@@ -13,7 +14,7 @@ import {
 import { processMessageText } from "./text-processor";
 
 export async function processMessageBlocks(
-  blocks: any[],
+  blocks: Block[],
   paragraphs: Paragraph[],
   indent: Record<string, any> = {}
 ): Promise<void> {
@@ -23,7 +24,7 @@ export async function processMessageBlocks(
 }
 
 async function processBlock(
-  block: any,
+  block: Block,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
@@ -54,12 +55,14 @@ async function processBlock(
 }
 
 async function processSectionBlock(
-  block: any,
+  block: Block,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
-  if (block.text) {
+  if (block.text && typeof block.text === "object") {
     await processMessageText(block.text.text, paragraphs, indent);
+  } else if (block.text && typeof block.text === "string") {
+    await processMessageText(block.text, paragraphs, indent);
   }
 
   if (block.fields?.length > 0) {
@@ -136,19 +139,19 @@ async function formatTextElement(element: any): Promise<string> {
 }
 
 async function processRichTextBlock(
-  block: any,
+  block: Block,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
-  if (block.elements) {
-    for (const element of block.elements) {
-      await processRichTextElement(element, paragraphs, indent);
-    }
+  if (block.text && typeof block.text === "object") {
+    await processMessageText(block.text.text, paragraphs, indent);
+  } else if (block.text && typeof block.text === "string") {
+    await processMessageText(block.text, paragraphs, indent);
   }
 }
 
 async function processImageBlock(
-  block: any,
+  block: Block,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
@@ -178,11 +181,11 @@ async function processImageBlock(
 }
 
 async function processContextBlock(
-  block: any,
+  block: Block,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
-  if (block.elements?.length > 0) {
+  if (block.elements && block.elements.length > 0) {
     const contextTexts = block.elements
       .filter(
         (element: any) =>
@@ -203,14 +206,14 @@ async function processContextBlock(
 }
 
 async function processDefaultBlock(
-  block: any,
+  block: Block,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
-  if (block.text) {
-    const text =
-      typeof block.text === "string" ? block.text : block.text.text || "";
-    await processMessageText(text, paragraphs, indent);
+  if (block.text && typeof block.text === "object") {
+    await processMessageText(block.text.text, paragraphs, indent);
+  } else if (block.text && typeof block.text === "string") {
+    await processMessageText(block.text, paragraphs, indent);
   }
 }
 

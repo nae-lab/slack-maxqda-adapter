@@ -21,5 +21,12 @@ export const args = yargs(hideBin(process.argv))
       type: "string",
       description: "End date to fetch messages to (YYYY-MM-DD)",
     },
+    format: {
+      alias: "f",
+      type: "string",
+      description: "Output format (docx or md)",
+      choices: ["docx", "md"],
+      default: "docx",
+    },
   })
   .parseSync();
