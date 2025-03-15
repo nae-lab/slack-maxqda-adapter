@@ -18,7 +18,7 @@ export async function retrieveMessages(
       channel: channelId,
       oldest: oldest.toString(),
       latest: latest.toString(),
-      limit: 1000,
+      limit: 999,
       cursor: cursor,
     });
     if (result.ok && result.messages) {
