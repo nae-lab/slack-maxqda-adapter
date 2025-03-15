@@ -4,7 +4,8 @@ import sharp from "sharp";
 export async function getImageDimensions(
   imageBuffer: Buffer,
   mimeType: string,
-  maxWidth: number = 500 // Default max width to prevent page overflow
+  maxWidth: number = 500, // Default max width to prevent page overflow
+  maxHeight: number = 350 // Default max height (約半ページの高さ)
 ): Promise<{
   width: number;
   height: number;
@@ -47,10 +48,23 @@ export async function getImageDimensions(
   // Calculate scaled dimensions to preserve aspect ratio
   let scaledWidth = width;
   let scaledHeight = height;
+  const aspectRatio = width / height;
 
-  // Scale down if wider than maxWidth
+  // 幅と高さの両方に制限を適用する
+  // まず幅の制限を適用
   if (width > maxWidth) {
-    const aspectRatio = width / height;
+    scaledWidth = maxWidth;
+    scaledHeight = Math.round(maxWidth / aspectRatio);
+  }
+
+  // 次に高さの制限を適用（高さが制限を超える場合）
+  if (scaledHeight > maxHeight) {
+    scaledHeight = maxHeight;
+    scaledWidth = Math.round(maxHeight * aspectRatio);
+  }
+
+  // 最終的なサイズがmaxWidthを超えないか確認（稀なケース）
+  if (scaledWidth > maxWidth) {
     scaledWidth = maxWidth;
     scaledHeight = Math.round(maxWidth / aspectRatio);
   }
@@ -83,23 +97,17 @@ export function getMappedImageType(
 // Enhanced function to ensure image is in a compatible format while preserving aspect ratio
 export async function ensureCompatibleImage(
   imageBuffer: Buffer,
-  mimeType: string
+  mimeType: string,
+  maxWidth: number = 1000,
+  maxHeight: number = 1000
 ): Promise<{ buffer: Buffer; type: "jpg" | "png" | "gif" | "bmp" }> {
   try {
-    // Get original dimensions to maintain aspect ratio
+    // 解像度を変更せず、フォーマットのみ変換する
     const metadata = await sharp(imageBuffer).metadata();
-    const width = metadata.width || 1000;
-    const height = metadata.height || 1000;
 
-    // Force convert to PNG for maximum compatibility
+    // PNGに変換するだけで、リサイズは行わない
     const processedBuffer = await sharp(imageBuffer)
       .png() // Always convert to PNG for compatibility
-      .resize({
-        width: Math.min(width, 1000), // Limit max width to prevent issues with large images
-        height: Math.min(height, 1000),
-        fit: "inside", // Preserves aspect ratio
-        withoutEnlargement: true,
-      })
       .toBuffer();
 
     return {
@@ -111,7 +119,7 @@ export async function ensureCompatibleImage(
 
     // Try a more basic approach as fallback
     try {
-      // Use a simpler conversion approach
+      // Use a simpler conversion approach - フォーマット変換のみ
       const simpleBuffer = await sharp(imageBuffer).toFormat("png").toBuffer();
 
       return {

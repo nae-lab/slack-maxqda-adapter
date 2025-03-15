@@ -75,6 +75,7 @@ export const styles = {
   // Image settings
   image: {
     maxWidth: 500, // Maximum image width
+    maxHeight: 350, // Maximum image height (約半ページの高さ)
   },
 
   // Special formatting

@@ -70,29 +70,29 @@ export async function processImageFile(
     // 画像の寸法を取得し、互換性のある形式を確保
     const imageBuffer = fs.readFileSync(filePath);
     const imageType = path.extname(filePath).substring(1);
-    const compatibleImage = await ensureCompatibleImage(imageBuffer, imageType);
+
+    // 互換性のある画像形式に変換（フォーマット変換のみで解像度は変更しない）
+    const compatibleImage = await ensureCompatibleImage(
+      imageBuffer,
+      imageType,
+      styles.image.maxWidth,
+      styles.image.maxHeight
+    );
+
+    // 画像の寸法を取得（表示サイズのみの調整で解像度は変更しない）
     const dimensions = await getImageDimensions(
       compatibleImage.buffer,
       compatibleImage.type,
-      styles.image.maxWidth
+      styles.image.maxWidth,
+      styles.image.maxHeight
     );
 
-    // 比例寸法を計算して幅が最大を超えないようにする
-    const maxWidth = styles.image.maxWidth;
-    let width = dimensions.width;
-    let height = dimensions.height;
-
-    if (width > maxWidth) {
-      height = (maxWidth / width) * height;
-      width = maxWidth;
-    }
-
-    // 画像を追加
+    // 画像を追加（寸法はgetImageDimensionsで既に調整済み）
     paragraphs.push(
       createImageParagraph(
         compatibleImage.buffer,
-        width,
-        height,
+        dimensions.scaledWidth,
+        dimensions.scaledHeight,
         compatibleImage.type,
         indent
       )

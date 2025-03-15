@@ -1,4 +1,5 @@
 import { Paragraph } from "docx";
+import * as path from "path";
 import { MessageFile } from "../../types";
 import * as fs from "fs";
 import {
@@ -17,6 +18,7 @@ import {
   isImageFile,
   readFileAsBuffer,
 } from "../../utils/file-utils";
+import { styles } from "../styles";
 
 /**
  * メッセージ内のファイルを処理し、Docxドキュメントに段落を追加します
@@ -59,20 +61,27 @@ export async function addFilesParagraphs(
           const imageBuffer = await readFileAsBuffer(filePath);
           const mimeType = file.mimetype || "image/png";
 
-          // 画像の寸法を取得
-          const dimensions = await getImageDimensions(imageBuffer, mimeType);
+          // 画像の寸法を取得（表示サイズのみの調整で解像度は変更しない）
+          const dimensions = await getImageDimensions(
+            imageBuffer,
+            mimeType,
+            styles.image.maxWidth,
+            styles.image.maxHeight
+          );
 
-          // 互換性のある画像形式に変換
+          // 互換性のある画像形式に変換（フォーマット変換のみ行い、解像度は変更しない）
           const compatibleImage = await ensureCompatibleImage(
             imageBuffer,
-            mimeType
+            mimeType,
+            styles.image.maxWidth,
+            styles.image.maxHeight
           );
 
           paragraphs.push(
             createImageParagraph(
               compatibleImage.buffer,
-              dimensions.width,
-              dimensions.height,
+              dimensions.scaledWidth,
+              dimensions.scaledHeight,
               compatibleImage.type
             )
           );
@@ -91,7 +100,8 @@ export async function addFilesParagraphs(
         );
       }
     } else {
-      // 非画像ファイルの場合はリンクを追加
+      // 非画像ファイルの場合は常にリンクを追加（パーマリンクが使用される）
+      // file-handler.tsで非画像ファイルは常にパーマリンクを返すように修正しました
       paragraphs.push(
         createFileLinkParagraph("File", file.name || "File", filePath)
       );

@@ -10,8 +10,10 @@ import {
   createTextParagraphs,
   createCodeBlockParagraphs,
   createBlockquoteParagraphs,
+  createImageParagraph,
 } from "../paragraph-formatters";
 import { processMessageText } from "./text-processor";
+import { getImageDimensions, ensureCompatibleImage } from "../image-utils";
 
 export async function processMessageBlocks(
   blocks: Block[],
@@ -88,10 +90,10 @@ async function processSectionBlock(
     }
   }
   if (block.fields?.length > 0) {
-      for (const field of block.fields) {
-        await processMessageText(field.text, paragraphs, indent);
-      }
+    for (const field of block.fields) {
+      await processMessageText(field.text, paragraphs, indent);
     }
+  }
 }
 
 async function processRichTextElement(
@@ -213,14 +215,64 @@ async function processImageBlock(
 
   try {
     if (block.image_url) {
-      paragraphs.push(
-        createFileLinkParagraph(
-          "Image",
-          block.alt_text || "Image",
-          block.image_url,
-          { indent }
-        )
-      );
+      try {
+        // 画像データを取得して埋め込み
+        const { default: fetch } = await import("node-fetch");
+        const response = await fetch(block.image_url);
+
+        if (response.ok) {
+          const imageBuffer = await response.buffer();
+          const mimeType = response.headers.get("content-type") || "image/png";
+
+          // 互換性のある画像形式に変換
+          const compatibleImage = await ensureCompatibleImage(
+            imageBuffer,
+            mimeType,
+            styles.image.maxWidth,
+            styles.image.maxHeight
+          );
+
+          // 画像サイズを制限
+          const dimensions = await getImageDimensions(
+            compatibleImage.buffer,
+            compatibleImage.type,
+            styles.image.maxWidth,
+            styles.image.maxHeight
+          );
+
+          // 画像を追加
+          paragraphs.push(
+            createImageParagraph(
+              compatibleImage.buffer,
+              dimensions.scaledWidth,
+              dimensions.scaledHeight,
+              compatibleImage.type,
+              { indent }
+            )
+          );
+        } else {
+          // 画像取得に失敗した場合はリンクを代わりに表示
+          paragraphs.push(
+            createFileLinkParagraph(
+              "Image",
+              block.alt_text || "Image",
+              block.image_url,
+              { indent }
+            )
+          );
+        }
+      } catch (fetchError) {
+        console.error("Failed to fetch image:", fetchError);
+        // エラー時はリンクを表示
+        paragraphs.push(
+          createFileLinkParagraph(
+            "Image",
+            block.alt_text || "Image",
+            block.image_url,
+            { indent }
+          )
+        );
+      }
     }
   } catch (error) {
     paragraphs.push(
