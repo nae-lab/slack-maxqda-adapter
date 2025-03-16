@@ -1,5 +1,5 @@
 import { Paragraph } from "docx";
-import { MessageFile } from "../../types";
+import { FileElement } from "../../types";
 import { createFileLinkParagraph } from "../paragraph-formatters";
 
 /**
@@ -10,7 +10,7 @@ import { createFileLinkParagraph } from "../paragraph-formatters";
  */
 export function processNonImageFile(
   paragraphs: Paragraph[],
-  file: MessageFile,
+  file: FileElement,
   indent: Record<string, any> = {}
 ): void {
   // 非画像ファイルの場合はリンクのみを追加

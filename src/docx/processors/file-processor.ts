@@ -1,24 +1,15 @@
 import { Paragraph } from "docx";
-import * as path from "path";
-import { MessageFile } from "../../types";
-import * as fs from "fs";
+import { FileElement, toSlackFile } from "../../types";
+import { downloadSlackFile } from "../../file-handler";
 import {
   createFileLinkParagraph,
   createImageTitleParagraph,
   createImageParagraph,
-  createErrorParagraph,
 } from "../paragraph-formatters";
-import {
-  getImageDimensions,
-  getMappedImageType,
-  ensureCompatibleImage,
-} from "../image-utils";
-import {
-  processSlackFile,
-  isImageFile,
-  readFileAsBuffer,
-} from "../../utils/file-utils";
+import { getImageDimensions, ensureCompatibleImage } from "../image-utils";
 import { styles } from "../styles";
+import * as fs from "fs";
+import * as path from "path";
 
 /**
  * メッセージ内のファイルを処理し、Docxドキュメントに段落を追加します
@@ -28,83 +19,111 @@ import { styles } from "../styles";
  */
 export async function addFilesParagraphs(
   paragraphs: Paragraph[],
-  files: MessageFile[],
+  files: FileElement[],
   options: {
-    indent?: any;
+    indent?: Record<string, any>;
     channelName?: string;
-  }
+  } = {}
 ): Promise<void> {
-  const { indent, channelName = "" } = options;
+  const { indent = {}, channelName = "" } = options;
 
   for (const file of files) {
-    const result = await processSlackFile(file, channelName);
+    try {
+      // FileElementからSlackFileへの変換
+      const slackFile = toSlackFile(file);
 
-    if (result.error || !result.path) {
-      console.error("Failed to process file", file.id, result.error);
-      paragraphs.push(
-        createErrorParagraph(
-          `Failed to process file: ${file.name || "unknown"}`
-        )
-      );
-      continue;
-    }
+      if (!slackFile.id) {
+        console.warn("Skipping file without id");
+        continue;
+      }
 
-    const { path: filePath, isPermalink } = result;
-
-    if (isImageFile(file.mimetype)) {
-      // 画像タイトルを追加
-      paragraphs.push(createImageTitleParagraph(file.name || "Image"));
-
-      if (!isPermalink) {
-        try {
-          // 画像ファイルをバッファとして読み込む
-          const imageBuffer = await readFileAsBuffer(filePath);
-          const mimeType = file.mimetype || "image/png";
-
-          // 画像の寸法を取得（表示サイズのみの調整で解像度は変更しない）
-          const dimensions = await getImageDimensions(
-            imageBuffer,
-            mimeType,
-            styles.image.maxWidth,
-            styles.image.maxHeight
-          );
-
-          // 互換性のある画像形式に変換（フォーマット変換のみ行い、解像度は変更しない）
-          const compatibleImage = await ensureCompatibleImage(
-            imageBuffer,
-            mimeType,
-            styles.image.maxWidth,
-            styles.image.maxHeight
-          );
-
-          paragraphs.push(
-            createImageParagraph(
-              compatibleImage.buffer,
-              dimensions.scaledWidth,
-              dimensions.scaledHeight,
-              compatibleImage.type
-            )
-          );
-        } catch (imageError) {
-          console.error("Failed to process image", file.id, imageError);
-          paragraphs.push(
-            createErrorParagraph(
-              `Failed to process image: ${file.name || "unknown"}`
-            )
-          );
-        }
+      if (file.mimetype && file.mimetype.startsWith("image/")) {
+        // 画像ファイルの処理
+        await processImageFile(paragraphs, file, channelName, indent);
       } else {
-        // リモート画像の場合はリンクを追加
+        // その他の添付ファイルの処理
         paragraphs.push(
-          createFileLinkParagraph("Image", file.name || "Image", filePath)
+          createFileLinkParagraph(
+            file.filetype?.toUpperCase() || "File",
+            file.name || file.title || "Unknown",
+            file.permalink || "",
+            indent
+          )
         );
       }
-    } else {
-      // 非画像ファイルの場合は常にリンクを追加（パーマリンクが使用される）
-      // file-handler.tsで非画像ファイルは常にパーマリンクを返すように修正しました
+    } catch (error) {
+      console.error("Error processing file:", error);
+    }
+  }
+}
+
+// 画像ファイルを処理する関数
+async function processImageFile(
+  paragraphs: Paragraph[],
+  file: FileElement,
+  channelName: string = "",
+  indent: Record<string, any> = {}
+): Promise<void> {
+  try {
+    // Slackファイルをダウンロード
+    const slackFile = toSlackFile(file);
+    const filePath = await downloadSlackFile(slackFile, channelName);
+
+    // 画像タイトルを追加
+    if (file.title || file.name) {
       paragraphs.push(
-        createFileLinkParagraph("File", file.name || "File", filePath)
+        createImageTitleParagraph(file.title || file.name || "Image", indent)
       );
     }
+
+    // リモートURLの場合はリンクを表示
+    if (filePath.startsWith("http")) {
+      paragraphs.push(
+        createFileLinkParagraph("Image", file.name || "Image", filePath, indent)
+      );
+      return;
+    }
+
+    // ローカルファイルの場合は画像を埋め込み
+    const imageBuffer = await fs.promises.readFile(filePath);
+    const mimeType = file.mimetype || "image/png";
+
+    // 互換性のある形式に変換
+    const compatibleImage = await ensureCompatibleImage(
+      imageBuffer,
+      mimeType,
+      styles.image.maxWidth,
+      styles.image.maxHeight
+    );
+
+    // 画像サイズを取得
+    const dimensions = await getImageDimensions(
+      compatibleImage.buffer,
+      compatibleImage.type,
+      styles.image.maxWidth,
+      styles.image.maxHeight
+    );
+
+    // 画像を追加
+    paragraphs.push(
+      createImageParagraph(
+        compatibleImage.buffer,
+        dimensions.scaledWidth,
+        dimensions.scaledHeight,
+        compatibleImage.type,
+        indent
+      )
+    );
+  } catch (error) {
+    console.error("Error processing image:", error);
+    // エラー時はリンクを表示
+    paragraphs.push(
+      createFileLinkParagraph(
+        "Image",
+        file.name || "Image",
+        file.permalink || "",
+        indent
+      )
+    );
   }
 }

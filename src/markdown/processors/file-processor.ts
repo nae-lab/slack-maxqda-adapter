@@ -1,4 +1,4 @@
-import { MessageFile } from "../../types";
+import { FileElement } from "../../types";
 import {
   processSlackFile,
   getObsidianImagePath,
@@ -8,7 +8,7 @@ import {
 
 // Process files attached to a message
 export async function processMessageFiles(
-  files: MessageFile[],
+  files: FileElement[],
   channelName: string,
   indentLevel: number = 0,
   markdownFilePath: string

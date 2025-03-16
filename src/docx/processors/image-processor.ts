@@ -1,7 +1,7 @@
 import { Paragraph } from "docx";
 import * as fs from "fs";
 import path from "path";
-import { MessageFile } from "../../types";
+import { FileElement, toSlackFile } from "../../types";
 import { downloadSlackFile } from "../../file-handler";
 import {
   createFileLinkParagraph,
@@ -21,7 +21,7 @@ import { handleFileProcessingError } from "../utils";
  */
 export async function processImageFile(
   paragraphs: Paragraph[],
-  file: MessageFile,
+  file: FileElement,
   channelName: string = "",
   indent: Record<string, any> = {}
 ): Promise<void> {
@@ -33,14 +33,7 @@ export async function processImageFile(
     }
 
     // Slackファイルオブジェクトを作成
-    const slackFile = {
-      id: file.id,
-      name: file.name,
-      permalink: file.permalink,
-      url_private: file.url_private,
-      url_private_download: file.url_private_download,
-      mimetype: file.mimetype,
-    };
+    const slackFile = toSlackFile(file);
 
     filePath = await downloadSlackFile(slackFile, channelName);
   } catch (err) {
@@ -67,19 +60,19 @@ export async function processImageFile(
   }
 
   try {
-    // 画像の寸法を取得し、互換性のある形式を確保
-    const imageBuffer = fs.readFileSync(filePath);
-    const imageType = path.extname(filePath).substring(1);
+    // 画像ファイルをバッファとして読み込む
+    const imageBuffer = await fs.promises.readFile(filePath);
+    const mimeType = file.mimetype || "image/png";
 
-    // 互換性のある画像形式に変換（フォーマット変換のみで解像度は変更しない）
+    // 互換性のある画像形式に変換
     const compatibleImage = await ensureCompatibleImage(
       imageBuffer,
-      imageType,
+      mimeType,
       styles.image.maxWidth,
       styles.image.maxHeight
     );
 
-    // 画像の寸法を取得（表示サイズのみの調整で解像度は変更しない）
+    // 画像サイズを取得
     const dimensions = await getImageDimensions(
       compatibleImage.buffer,
       compatibleImage.type,
@@ -87,7 +80,7 @@ export async function processImageFile(
       styles.image.maxHeight
     );
 
-    // 画像を追加（寸法はgetImageDimensionsで既に調整済み）
+    // 画像を追加
     paragraphs.push(
       createImageParagraph(
         compatibleImage.buffer,
@@ -97,7 +90,15 @@ export async function processImageFile(
         indent
       )
     );
-  } catch (err) {
-    handleFileProcessingError(paragraphs, file, err, "Image", indent);
+  } catch (error) {
+    console.error("Error processing image:", error);
+    paragraphs.push(
+      createFileLinkParagraph(
+        "Image",
+        file.name || "Unknown",
+        file.permalink || "",
+        indent
+      )
+    );
   }
 }

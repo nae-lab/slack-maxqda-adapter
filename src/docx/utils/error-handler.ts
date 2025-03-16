@@ -1,5 +1,5 @@
 import { Paragraph } from "docx";
-import { MessageFile } from "../../types";
+import { FileElement } from "../../types";
 import { createFileLinkParagraph } from "../paragraph-formatters";
 
 /**
@@ -17,7 +17,7 @@ import { createFileLinkParagraph } from "../paragraph-formatters";
  */
 export function handleFileProcessingError(
   paragraphs: Paragraph[],
-  file: MessageFile,
+  file: FileElement,
   error: unknown,
   fileType: string = "File",
   indent: Record<string, any> = {}

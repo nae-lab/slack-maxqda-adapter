@@ -6,12 +6,6 @@ import { File as SharedPublicFile } from "@slack/web-api/dist/types/response/Fil
 import { getSlackToken } from "./slack-client";
 import { slackClient, getFilesDir, ensureDirectoryExists } from "./config";
 
-// Ensure download directory exists
-function ensureDownloadDirectory(directory: string) {
-  if (!fs.existsSync(directory)) {
-    fs.mkdirSync(directory, { recursive: true });
-  }
-}
 
 // Helper function to construct public file URL from permalink_public
 function constructFileUrl(sharedFile: SharedPublicFile): string | null {
@@ -57,11 +51,6 @@ export async function downloadSlackFile(
   file: SlackFile,
   channelName: string = ""
 ): Promise<string> {
-  // 非画像ファイルの場合は常にパーマリンクを使用
-  if (file.mimetype && !file.mimetype.startsWith("image/")) {
-    return file.permalink || `https://slack.com/files/${file.id}`;
-  }
-
   const outputDir = ensureDirectoryExists(getFilesDir(channelName));
 
   // Generate a unique filename
@@ -106,7 +95,7 @@ export async function downloadSlackFile(
       });
       console.log(`Successfully downloaded file to ${outputPath}`);
       downloadSuccess = true;
-      return outputPath;
+      break;
     } catch (err: any) {
       console.error(
         `Private download failed using ${url}: ${(err as Error).message}`
@@ -115,8 +104,10 @@ export async function downloadSlackFile(
     }
   }
 
-  // Return the appropriate URL based on download success
-  if (downloadSuccess) {
+  // 非画像ファイルの場合は常にパーマリンクを使用
+  if (file.mimetype && !file.mimetype.startsWith("image/")) {
+    return file.permalink || `https://slack.com/files/${file.id}`;
+  } else if (downloadSuccess) {
     return outputPath;
   }
   return file.permalink || `https://slack.com/files/${file.id}`;

@@ -1,4 +1,11 @@
-import { Block, RichTextElement, PurpleElement } from "../../types";
+import {
+  Block,
+  PurpleType,
+  FluffyType,
+  PurpleElement,
+  RichTextElement,
+  Accessory,
+} from "../../types";
 import { processMessageText } from "./text-processor";
 
 // Process Slack Block Kit blocks for markdown output
@@ -16,7 +23,7 @@ export async function processMessageBlocks(
       case "section":
         if (block.text) {
           const textContent =
-            typeof block.text === "object" ? block.text.text : block.text;
+            typeof block.text === "object" ? block.text.text || "" : block.text;
           const processedText = await processMessageText(
             textContent,
             indentLevel
@@ -31,7 +38,7 @@ export async function processMessageBlocks(
         // For unsupported block types, try to extract text content
         if (block.text) {
           const textContent =
-            typeof block.text === "object" ? block.text.text : block.text;
+            typeof block.text === "object" ? block.text.text || "" : block.text;
           const processedText = await processMessageText(
             textContent,
             indentLevel
@@ -51,13 +58,26 @@ async function processRichTextBlock(
 ): Promise<string> {
   let text = "";
 
-  for (const element of block.elements ?? []) {
-    if (element.type === "rich_text_section") {
-      text += await processRichTextSection(element);
-    } else if (element.type === "rich_text_quote") {
-      text += await processRichTextQuote(element, indentLevel);
-    } else if (element.type === "rich_text_list") {
-      text += await processRichTextList(element, indentLevel);
+  if (block.elements) {
+    for (const accessory of block.elements) {
+      // Blockのelementsは実際にはAccessory[]
+      if (accessory.type) {
+        if (accessory.type.toString() === FluffyType.RichTextSection) {
+          text += await processRichTextSection(
+            accessory as unknown as RichTextElement
+          );
+        } else if (accessory.type.toString() === FluffyType.RichTextQuote) {
+          text += await processRichTextQuote(
+            accessory as unknown as RichTextElement,
+            indentLevel
+          );
+        } else if (accessory.type.toString() === FluffyType.RichTextList) {
+          text += await processRichTextList(
+            accessory as unknown as RichTextElement,
+            indentLevel
+          );
+        }
+      }
     }
   }
 
@@ -70,19 +90,22 @@ async function processRichTextSection(
 ): Promise<string> {
   let text = "";
 
-  for (const item of element.elements ?? []) {
-    const itemElement = item as PurpleElement;
-    if (itemElement.text) {
-      if (itemElement.style?.bold) {
-        text += `**${itemElement.text}**`;
-      } else if (itemElement.style?.italic) {
-        text += `*${itemElement.text}*`;
-      } else if (itemElement.style?.strike) {
-        text += `~~${itemElement.text}~~`;
-      } else if (itemElement.style?.code) {
-        text += `\`${itemElement.text}\``;
-      } else {
-        text += itemElement.text;
+  if (element.elements) {
+    for (const item of element.elements) {
+      // RichTextElement.elementsはPurpleElement[]
+      const itemElement = item as PurpleElement;
+      if (itemElement.text) {
+        if (itemElement.style?.bold) {
+          text += `**${itemElement.text}**`;
+        } else if (itemElement.style?.italic) {
+          text += `*${itemElement.text}*`;
+        } else if (itemElement.style?.strike) {
+          text += `~~${itemElement.text}~~`;
+        } else if (itemElement.style?.code) {
+          text += `\`${itemElement.text}\``;
+        } else {
+          text += itemElement.text;
+        }
       }
     }
   }
@@ -113,11 +136,16 @@ async function processRichTextList(
   let text = "\n";
   const indentStr = "  ".repeat(indentLevel);
 
-  for (const item of element.elements ?? []) {
-    if (item.type === "rich_text_list_item") {
-      const itemText = await processRichTextSection(item);
-      const bullet = element.style === "ordered" ? "1." : "-";
-      text += `${indentStr}${bullet} ${itemText}\n`;
+  if (element.elements) {
+    for (const item of element.elements) {
+      // RichTextList内のelementsは、RichTextListItem型
+      // 型チェックはtype属性の文字列値で行う
+      if (item.type && item.type.toString() === "rich_text_list_item") {
+        const listItemElement = item as unknown as RichTextElement;
+        const itemText = await processRichTextSection(listItemElement);
+        const bullet = element.style === "ordered" ? "1." : "-";
+        text += `${indentStr}${bullet} ${itemText}\n`;
+      }
     }
   }
 

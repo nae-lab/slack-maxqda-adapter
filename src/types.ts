@@ -1,13 +1,32 @@
 import {
   MessageElement,
   Reaction,
+  PurpleBlock as Block,
+  BlockType,
+  PurpleElement,
+  FluffyType,
+  AccessoryElement as RichTextElement,
+  FileElement,
+  SlackFile as OriginalSlackFile,
+  PurpleType,
+  Accessory,
 } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 import { ConversationsHistoryResponse } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
-import { PurpleElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 
 export interface MessagesResult {
   messages: MessageElement[];
   result: ConversationsHistoryResponse;
+}
+
+// カスタムのSlackFile型を定義（ファイルダウンロードに必要なプロパティ）
+export interface SlackFile {
+  id: string;
+  url?: string;
+  url_private?: string;
+  url_private_download?: string;
+  permalink?: string;
+  name?: string;
+  mimetype?: string;
 }
 
 export {
@@ -15,77 +34,26 @@ export {
   Reaction,
   ConversationsHistoryResponse,
   PurpleElement,
+  BlockType,
+  PurpleType,
+  FluffyType,
+  Block,
+  RichTextElement,
+  FileElement,
+  Accessory,
 };
 
-// Block Kit関連の型定義
-// より汎用的なBlock型定義（PurpleBlockを包含するように）
-export interface Block {
-  type: string | undefined;
-  // textプロパティはblockのタイプによっては存在しない場合がある
-  // 特にrich_textタイプのブロックではtextではなくelementsにコンテンツが含まれる
-  text?:
-    | {
-        text: string;
-        [key: string]: any;
-      }
-    | string
-    | undefined;
-  // elementsはrich_textタイプなどで重要なプロパティ
-  // rich_textの場合、このプロパティにテキストコンテンツが含まれる
-  elements?: Array<any>;
-  [key: string]: any;
-}
-
-// Block型をMessageElement内のblocksにも使えるようにする型変換関数
-// rich_textタイプのブロックなどを処理する際は、
-// block.textではなくblock.elementsからコンテンツを抽出する必要がある
-export function asBlocks(blocks: any[]): Block[] {
-  return blocks as Block[];
-}
-
-export interface RichTextElement {
-  type: string;
-  elements?: Array<PurpleElement | any>;
-  style?: string;
-  [key: string]: any;
-}
-
-// Define a file type for Slack message files based on what's in MessageElement
-export interface MessageFile {
-  id?: string;
-  name?: string;
-  title?: string;
-  mimetype?: string;
-  filetype?: string;
-  permalink?: string;
-  url_private?: string;
-  url_private_download?: string;
-  mode?: string;
-  [key: string]: any; // Allow other properties that may exist
-}
-
-// Interface for the file object expected by downloadSlackFile
-export interface SlackFile {
-  id: string;
-  name?: string;
-  title?: string;
-  mimetype?: string;
-  url_private?: string;
-  url_private_download?: string;
-  permalink?: string;
-}
-
-// Utility function to safely convert MessageFile to SlackFile
-export function toSlackFile(file: MessageFile): SlackFile | null {
-  if (!file.id) return null;
-
+// FileElementからSlackFileへの変換関数
+export function toSlackFile(file: FileElement): SlackFile {
   return {
-    id: file.id,
-    name: file.name || "unnamed_file",
-    mimetype: file.mimetype,
+    id: file.id || "",
+    url: file.url_private,
     url_private: file.url_private,
     url_private_download: file.url_private_download,
     permalink: file.permalink,
+    name: file.name,
+    mimetype: file.mimetype,
   };
 }
+
 export type Optional<T> = T | undefined;

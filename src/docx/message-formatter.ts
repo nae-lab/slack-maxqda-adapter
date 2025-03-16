@@ -1,5 +1,5 @@
 import { Paragraph } from "docx";
-import { MessageElement, MessageFile, asBlocks } from "../types";
+import { MessageElement, FileElement, Block } from "../types";
 import { getUserName } from "../slack-client";
 import { replaceMentionToUserName, extractMessageText } from "./text-utils";
 import { generateSlackMessageUrl } from "../slack-client";
@@ -56,7 +56,7 @@ export async function createMessageParagraphs(
 
   // Process message blocks if available (Slack Block Kit)
   if (message.blocks && message.blocks.length > 0) {
-    const blocksAfterConversion = asBlocks(message.blocks);
+    const blocksAfterConversion = message.blocks as Block[];
     await processMessageBlocks(blocksAfterConversion, paragraphs, indent);
   } else {
     // メッセージテキストを処理して追加
@@ -69,7 +69,7 @@ export async function createMessageParagraphs(
 
   // Add files/images directly to the document
   if (message.files && Array.isArray(message.files)) {
-    await addFilesParagraphs(paragraphs, message.files as MessageFile[], {
+    await addFilesParagraphs(paragraphs, message.files as FileElement[], {
       indent,
       channelName,
     });

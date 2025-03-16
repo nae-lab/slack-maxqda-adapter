@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import path from "path";
-import { MessageElement, asBlocks } from "../types";
+import { MessageElement, Block } from "../types";
 import {
   retrieveThreadMessages,
   getUserName,
@@ -107,7 +107,7 @@ async function createMessageMarkdown(
   // Process message blocks if available (Slack Block Kit)
   if (message.blocks && message.blocks.length > 0) {
     markdownContent += await processMessageBlocks(
-      asBlocks(message.blocks),
+      message.blocks as Block[],
       indentLevel
     );
   } else if (message.text) {

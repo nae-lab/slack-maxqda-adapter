@@ -1,4 +1,4 @@
-import { MessageFile, toSlackFile } from "../types";
+import { FileElement, SlackFile, toSlackFile } from "../types";
 import { downloadSlackFile } from "../file-handler";
 import path from "path";
 import * as fs from "fs";
@@ -11,7 +11,7 @@ import * as fs from "fs";
  * @returns ダウンロードされたファイルのパスまたはパーマリンク
  */
 export async function processSlackFile(
-  file: MessageFile,
+  file: FileElement,
   channelName: string = ""
 ): Promise<{
   path: string;
@@ -19,8 +19,10 @@ export async function processSlackFile(
   error?: Error;
 }> {
   try {
+    // FileElementからSlackFileへの変換
     const slackFile = toSlackFile(file);
-    if (!slackFile) {
+
+    if (!slackFile.id) {
       throw new Error("Invalid file object without ID");
     }
 
@@ -32,9 +34,9 @@ export async function processSlackFile(
       isPermalink,
     };
   } catch (error) {
-    console.error("Failed to process Slack file:", error);
+    console.error(`Error processing file: ${error}`);
     return {
-      path: "",
+      path: file.permalink || "",
       isPermalink: true,
       error: error instanceof Error ? error : new Error(String(error)),
     };

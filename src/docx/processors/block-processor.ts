@@ -1,7 +1,14 @@
 import { Paragraph } from "docx";
 import { getUserName, getUserGroupName } from "../../slack-client";
 import { styles } from "../styles";
-import { Block } from "../../types";
+import {
+  Block,
+  PurpleType,
+  FluffyType,
+  PurpleElement,
+  RichTextElement,
+  Accessory,
+} from "../../types";
 import {
   createSeparatorParagraph,
   createImageTitleParagraph,
@@ -62,73 +69,86 @@ async function processSectionBlock(
   indent: Record<string, any>
 ): Promise<void> {
   if (block.text && typeof block.text === "object") {
-    await processMessageText(block.text.text, paragraphs, indent);
+    await processMessageText(block.text.text || "", paragraphs, indent);
   } else if (block.text && typeof block.text === "string") {
     await processMessageText(block.text, paragraphs, indent);
   } else if (block.elements && Array.isArray(block.elements)) {
     // sectionブロックのelementsからテキストを抽出
     let extractedText = "";
 
-    for (const element of block.elements) {
-      if (element.type === "text") {
-        extractedText += element.text || "";
-      } else if (element.type === "rich_text_section" && element.elements) {
-        for (const textElement of element.elements) {
-          if (textElement.type === "text") {
-            extractedText += textElement.text || "";
-          } else if (textElement.type === "link") {
-            extractedText += `[${
-              textElement.text || textElement.url || "link"
-            }](${textElement.url})`;
+    for (const accessory of block.elements) {
+      // Accessoryからテキストを抽出するには、個々のelementsを処理する必要がある
+      if (accessory.elements && Array.isArray(accessory.elements)) {
+        // Accessory.elementsはRichTextElement[]として定義されている
+        for (const richTextElement of accessory.elements) {
+          // RichTextElement.elementsはPurpleElement[]として定義されている
+          if (
+            richTextElement.elements &&
+            Array.isArray(richTextElement.elements)
+          ) {
+            for (const element of richTextElement.elements) {
+              if (element.type === PurpleType.Text) {
+                extractedText += element.text || "";
+              } else if (element.type === PurpleType.Link) {
+                extractedText += `[${element.text || element.url || "link"}](${
+                  element.url
+                })`;
+              }
+            }
           }
         }
       }
     }
 
     if (extractedText) {
-      await processMessageText(extractedText, paragraphs, indent);
+      await processMessageText(extractedText || "", paragraphs, indent);
     }
   }
-  if (block.fields?.length > 0) {
+  if (block.fields && block.fields.length > 0) {
     for (const field of block.fields) {
-      await processMessageText(field.text, paragraphs, indent);
+      if (field && field.text) {
+        await processMessageText(field.text || "", paragraphs, indent);
+      }
     }
   }
 }
 
 async function processRichTextElement(
-  element: any,
+  element: RichTextElement,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
+  if (!element.type) return;
+
   switch (element.type) {
-    case "rich_text_section":
+    case FluffyType.RichTextSection:
       await processRichTextSection(element, paragraphs, indent);
       break;
 
-    case "rich_text_preformatted":
+    case FluffyType.RichTextPreformatted:
       await processRichTextPreformatted(element, paragraphs, indent);
       break;
 
-    case "rich_text_quote":
+    case FluffyType.RichTextQuote:
       await processRichTextQuote(element, paragraphs, indent);
       break;
 
-    case "rich_text_list":
+    case FluffyType.RichTextList:
       await processRichTextList(element, paragraphs, indent);
       break;
   }
 }
 
 async function processRichTextSection(
-  element: any,
+  element: RichTextElement,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
   let sectionText = "";
 
   if (element.elements) {
-    for (const textElement of element.elements) {
+    // RichTextElement.elementsはPurpleElement[]
+    for (const textElement of element.elements as PurpleElement[]) {
       sectionText += await formatTextElement(textElement);
     }
   }
@@ -142,25 +162,27 @@ async function processRichTextSection(
   }
 }
 
-async function formatTextElement(element: any): Promise<string> {
+async function formatTextElement(element: PurpleElement): Promise<string> {
+  if (!element.type) return "";
+
   switch (element.type) {
-    case "text":
+    case PurpleType.Text:
       return element.text || "";
-    case "link":
+    case PurpleType.Link:
       return `[${element.text || element.url || "link"}](${element.url})`;
-    case "user":
+    case PurpleType.User:
       const userName = element.user_id
         ? await getUserName(element.user_id)
         : "user";
       return `@${userName}`;
-    case "usergroup":
+    case PurpleType.Usergroup:
       const groupName = element.usergroup_id
         ? await getUserGroupName(element.usergroup_id)
         : "group";
       return `@${groupName}`;
-    case "emoji":
+    case PurpleType.Emoji:
       return `:${element.name}:`;
-    case "channel":
+    case PurpleType.Channel:
       return `#${element.channel_id || "channel"}`;
     default:
       return "";
@@ -173,33 +195,19 @@ async function processRichTextBlock(
   indent: Record<string, any>
 ): Promise<void> {
   if (block.text && typeof block.text === "object") {
-    await processMessageText(block.text.text, paragraphs, indent);
+    await processMessageText(block.text.text || "", paragraphs, indent);
   } else if (block.text && typeof block.text === "string") {
     await processMessageText(block.text, paragraphs, indent);
   } else if (block.elements && Array.isArray(block.elements)) {
-    let extractedText = "";
-
-    // rich_text_section要素を探して処理
-    for (const element of block.elements) {
-      if (element.type === "rich_text_section" && element.elements) {
-        for (const textElement of element.elements) {
-          if (textElement.type === "text") {
-            extractedText += textElement.text || "";
-          } else if (textElement.type === "link") {
-            extractedText += `[${
-              textElement.text || textElement.url || "link"
-            }](${textElement.url})`;
-          } else if (textElement.type === "usergroup") {
-            const groupId = textElement.usergroup_id || "";
-            const groupName = await getUserGroupName(groupId);
-            extractedText += `@${groupName}`;
-          }
-        }
-      }
-    }
-
-    if (extractedText) {
-      await processMessageText(extractedText, paragraphs, indent);
+    // 各要素のタイプに応じて処理
+    for (const accessory of block.elements) {
+      // PurpleBlock.elementsはAccessory[]
+      // 型の互換性のためにキャスト
+      await processRichTextElement(
+        accessory as unknown as RichTextElement,
+        paragraphs,
+        indent
+      );
     }
   }
 }
@@ -209,8 +217,10 @@ async function processImageBlock(
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
-  if (block.title) {
-    paragraphs.push(createImageTitleParagraph(block.title.text, { indent }));
+  if (block.title && block.title.text) {
+    paragraphs.push(
+      createImageTitleParagraph(block.title.text || "", { indent })
+    );
   }
 
   try {
@@ -315,47 +325,56 @@ async function processDefaultBlock(
   indent: Record<string, any>
 ): Promise<void> {
   if (block.text && typeof block.text === "object") {
-    await processMessageText(block.text.text, paragraphs, indent);
+    await processMessageText(block.text.text || "", paragraphs, indent);
   } else if (block.text && typeof block.text === "string") {
     await processMessageText(block.text, paragraphs, indent);
   } else if (block.elements && Array.isArray(block.elements)) {
     // elementsからテキストを抽出（デフォルト処理）
     let extractedText = "";
 
-    for (const element of block.elements) {
-      if (element.type === "text") {
-        extractedText += element.text || "";
-      } else if (element.type === "rich_text_section" && element.elements) {
-        for (const textElement of element.elements) {
-          if (textElement.type === "text") {
-            extractedText += textElement.text || "";
-          } else if (textElement.type === "link") {
-            extractedText += `[${
-              textElement.text || textElement.url || "link"
-            }](${textElement.url})`;
-          } else if (textElement.type === "usergroup") {
-            extractedText += `@${textElement.usergroup_id || "group"}`;
+    for (const accessory of block.elements) {
+      // Accessoryからテキストを抽出するには、個々のelementsを処理する必要がある
+      if (accessory.elements && Array.isArray(accessory.elements)) {
+        // Accessory.elementsはRichTextElement[]として定義されている
+        for (const richTextElement of accessory.elements) {
+          // RichTextElement.elementsはPurpleElement[]として定義されている
+          if (
+            richTextElement.elements &&
+            Array.isArray(richTextElement.elements)
+          ) {
+            for (const element of richTextElement.elements) {
+              if (element.type === PurpleType.Text) {
+                extractedText += element.text || "";
+              } else if (element.type === PurpleType.Link) {
+                extractedText += `[${element.text || element.url || "link"}](${
+                  element.url
+                })`;
+              } else if (element.type === PurpleType.Usergroup) {
+                extractedText += `@${element.usergroup_id || "group"}`;
+              }
+            }
           }
         }
       }
     }
 
     if (extractedText) {
-      await processMessageText(extractedText, paragraphs, indent);
+      await processMessageText(extractedText || "", paragraphs, indent);
     }
   }
 }
 
 async function processRichTextPreformatted(
-  element: any,
+  element: RichTextElement,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
   let codeText = "";
 
   if (element.elements) {
-    for (const textElement of element.elements) {
-      if (textElement.type === "text") {
+    // RichTextElement.elementsはPurpleElement[]
+    for (const textElement of element.elements as PurpleElement[]) {
+      if (textElement.type === PurpleType.Text) {
         codeText += textElement.text || "";
       }
     }
@@ -367,17 +386,18 @@ async function processRichTextPreformatted(
 }
 
 async function processRichTextQuote(
-  element: any,
+  element: RichTextElement,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
   let quoteText = "";
 
   if (element.elements) {
-    for (const textElement of element.elements) {
-      if (textElement.type === "text") {
+    // RichTextElement.elementsはPurpleElement[]
+    for (const textElement of element.elements as PurpleElement[]) {
+      if (textElement.type === PurpleType.Text) {
         quoteText += textElement.text || "";
-      } else if (textElement.type === "link") {
+      } else if (textElement.type === PurpleType.Link) {
         const linkText = textElement.text || textElement.url || "link";
         quoteText += `[${linkText}](${textElement.url})`;
       }
@@ -390,7 +410,7 @@ async function processRichTextQuote(
 }
 
 async function processRichTextList(
-  list: any,
+  list: RichTextElement,
   paragraphs: Paragraph[],
   indent: Record<string, any>
 ): Promise<void> {
@@ -400,15 +420,22 @@ async function processRichTextList(
   let counter = 1;
 
   for (const item of list.elements) {
-    if (item.type === "rich_text_list_item") {
-      await processListItem(item, isOrdered, counter, paragraphs, { indent });
+    if (item.type && item.type.toString() === "rich_text_list_item") {
+      // RichTextElement同士の処理なので型キャストが必要
+      await processListItem(
+        item as RichTextElement,
+        isOrdered,
+        counter,
+        paragraphs,
+        { indent }
+      );
       if (isOrdered) counter++;
     }
   }
 }
 
 async function processListItem(
-  item: any,
+  item: RichTextElement,
   isOrdered: boolean,
   counter: number,
   paragraphs: Paragraph[],
@@ -418,8 +445,11 @@ async function processListItem(
 
   if (item.elements) {
     for (const element of item.elements) {
-      if (element.type === "rich_text_section") {
-        itemText += await processListItemText(element);
+      // rich_text_sectionタイプのElementを処理
+      if (element.type && element.type.toString() === "rich_text_section") {
+        // 適切な型変換を行う
+        const richTextElement = element as RichTextElement;
+        itemText += await processListItemText(richTextElement);
       }
     }
   }
@@ -437,14 +467,14 @@ async function processListItem(
   }
 }
 
-async function processListItemText(element: any): Promise<string> {
+async function processListItemText(element: RichTextElement): Promise<string> {
   let text = "";
 
   if (element.elements) {
-    for (const textElement of element.elements) {
-      if (textElement.type === "text") {
+    for (const textElement of element.elements as PurpleElement[]) {
+      if (textElement.type === PurpleType.Text) {
         text += textElement.text || "";
-      } else if (textElement.type === "link") {
+      } else if (textElement.type === PurpleType.Link) {
         const linkText = textElement.text || textElement.url || "link";
         text += `[${linkText}](${textElement.url})`;
       }

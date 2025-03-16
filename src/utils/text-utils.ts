@@ -1,4 +1,4 @@
-import { MessageElement, MessageFile, toSlackFile } from "../types";
+import { MessageElement, FileElement, SlackFile, toSlackFile } from "../types";
 import {
   getUserName,
   getUserGroupName,
@@ -133,10 +133,12 @@ export async function extractMessageText(
 
   // ファイル処理（オプション）
   if (processFullContent && message.files && Array.isArray(message.files)) {
-    for (const file of message.files as MessageFile[]) {
+    for (const file of message.files as FileElement[]) {
       try {
-        const slackFile = toSlackFile(file);
-        if (!slackFile) {
+        // MessageFileからSlackFileへの変換
+        const slackFile: SlackFile = toSlackFile(file);
+
+        if (!slackFile.id) {
           console.warn("Skipping file without id:", file);
           continue;
         }
