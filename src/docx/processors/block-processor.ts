@@ -185,6 +185,7 @@ async function formatTextElement(element: PurpleElement): Promise<string> {
     case PurpleType.Channel:
       return `#${element.channel_id || "channel"}`;
     default:
+      console.warn(`Unhandled text element type: ${element.type}`);
       return "";
   }
 }
@@ -395,12 +396,7 @@ async function processRichTextQuote(
   if (element.elements) {
     // RichTextElement.elementsはPurpleElement[]
     for (const textElement of element.elements as PurpleElement[]) {
-      if (textElement.type === PurpleType.Text) {
-        quoteText += textElement.text || "";
-      } else if (textElement.type === PurpleType.Link) {
-        const linkText = textElement.text || textElement.url || "link";
-        quoteText += `[${linkText}](${textElement.url})`;
-      }
+      quoteText += await formatTextElement(textElement);
     }
   }
 
@@ -419,65 +415,54 @@ async function processRichTextList(
   const isOrdered = list.style === "ordered";
   let counter = 1;
 
+  // Slackのネストレベルを取得（デフォルトは0）
+  const nestLevel = typeof list.indent === "number" ? list.indent : 0;
+
+  // Slackのリスト要素はrich_text_sectionタイプ
   for (const item of list.elements) {
-    if (item.type && item.type.toString() === "rich_text_list_item") {
-      // RichTextElement同士の処理なので型キャストが必要
-      await processListItem(
-        item as RichTextElement,
-        isOrdered,
-        counter,
-        paragraphs,
-        { indent }
-      );
-      if (isOrdered) counter++;
-    }
-  }
-}
+    // 比較の問題を修正：文字列で比較する
+    if (
+      item.type &&
+      item.type.toString() === FluffyType.RichTextSection.toString()
+    ) {
+      // 直接processListItemTextを呼び出す（フォーマットされたテキストを取得）
+      const bulletChar = isOrdered ? `${counter}. ` : "• ";
+      const content = await processTextElements(item as RichTextElement);
 
-async function processListItem(
-  item: RichTextElement,
-  isOrdered: boolean,
-  counter: number,
-  paragraphs: Paragraph[],
-  indent: Record<string, any>
-): Promise<void> {
-  let itemText = isOrdered ? `${counter}. ` : "• ";
+      if (content) {
+        // ネストレベルに応じてインデントを増やす
+        // 基本インデント + ネストレベルに応じた追加インデント
+        // ネストが深くなるほどインデント量を増やす
+        const baseIndent = indent.left || 0;
+        const nestIndent = nestLevel * styles.indent * 1.5; // ネストレベルに応じて1.5倍のインデント
+        const indentAmount = baseIndent + styles.indent + nestIndent;
 
-  if (item.elements) {
-    for (const element of item.elements) {
-      // rich_text_sectionタイプのElementを処理
-      if (element.type && element.type.toString() === "rich_text_section") {
-        // 適切な型変換を行う
-        const richTextElement = element as RichTextElement;
-        itemText += await processListItemText(richTextElement);
+        // 段落を追加
+        paragraphs.push(
+          ...createTextParagraphs(bulletChar + content, {
+            indent: {
+              left: indentAmount,
+              // 順序付きリストの場合はハンギングインデントを大きくする
+              hanging: isOrdered
+                ? Math.min(360 + nestLevel * 60, 540)
+                : Math.min(240 + nestLevel * 40, 360),
+            },
+          })
+        );
+
+        if (isOrdered) counter++;
       }
     }
   }
-
-  if (itemText) {
-    paragraphs.push(
-      ...createTextParagraphs(itemText, {
-        ...indent,
-        indent: {
-          left: (indent.left || 0) + styles.indent,
-          hanging: isOrdered ? 360 : 240,
-        },
-      })
-    );
-  }
 }
 
-async function processListItemText(element: RichTextElement): Promise<string> {
+// 複数のテキスト要素を処理して結合する共通関数
+async function processTextElements(element: RichTextElement): Promise<string> {
   let text = "";
 
   if (element.elements) {
     for (const textElement of element.elements as PurpleElement[]) {
-      if (textElement.type === PurpleType.Text) {
-        text += textElement.text || "";
-      } else if (textElement.type === PurpleType.Link) {
-        const linkText = textElement.text || textElement.url || "link";
-        text += `[${linkText}](${textElement.url})`;
-      }
+      text += await formatTextElement(textElement);
     }
   }
 
