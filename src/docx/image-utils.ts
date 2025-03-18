@@ -31,49 +31,24 @@ export async function getImageDimensions(
   // Default fallback dimensions - different defaults based on content type
   if (width === 0 || height === 0) {
     if (mimeType && mimeType.startsWith("audio/")) {
-      // Use a smaller width for audio files
       width = 300;
       height = 60;
     } else if (mimeType && mimeType.startsWith("video/")) {
-      // For video files, use 16:9 ratio
       width = 400;
       height = 225;
     } else {
-      // Generic fallback for any other type
       width = 400;
       height = 300;
     }
   }
 
-  // Calculate scaled dimensions to preserve aspect ratio
-  let scaledWidth = width;
-  let scaledHeight = height;
-  const aspectRatio = width / height;
-
-  // 幅と高さの両方に制限を適用する
-  // まず幅の制限を適用
-  if (width > maxWidth) {
-    scaledWidth = maxWidth;
-    scaledHeight = Math.round(maxWidth / aspectRatio);
-  }
-
-  // 次に高さの制限を適用（高さが制限を超える場合）
-  if (scaledHeight > maxHeight) {
-    scaledHeight = maxHeight;
-    scaledWidth = Math.round(maxHeight * aspectRatio);
-  }
-
-  // 最終的なサイズがmaxWidthを超えないか確認（稀なケース）
-  if (scaledWidth > maxWidth) {
-    scaledWidth = maxWidth;
-    scaledHeight = Math.round(maxWidth / aspectRatio);
-  }
-
+  // 既に適切なサイズに調整されている可能性があるため、
+  // 元のサイズをそのまま返す
   return {
     width,
     height,
-    scaledWidth,
-    scaledHeight,
+    scaledWidth: width,
+    scaledHeight: height,
   };
 }
 
@@ -102,24 +77,66 @@ export async function ensureCompatibleImage(
   maxHeight: number = 1000
 ): Promise<{ buffer: Buffer; type: "jpg" | "png" | "gif" | "bmp" }> {
   try {
-    // 解像度を変更せず、フォーマットのみ変換する
+    // 画像のメタデータを取得
     const metadata = await sharp(imageBuffer).metadata();
+    const width = metadata.width || 0;
+    const height = metadata.height || 0;
 
-    // PNGに変換するだけで、リサイズは行わない
-    const processedBuffer = await sharp(imageBuffer)
-      .png() // Always convert to PNG for compatibility
-      .toBuffer();
+    console.log(
+      `[DEBUG] ensureCompatibleImage - Original size: ${width}x${height}`
+    );
+
+    // アスペクト比を計算
+    if (width > 0 && height > 0) {
+      const aspectRatio = width / height;
+      let newWidth = width;
+      let newHeight = height;
+
+      // サイズ制限を適用
+      if (width > maxWidth || height > maxHeight) {
+        const widthRatio = maxWidth / width;
+        const heightRatio = maxHeight / height;
+        const scale = Math.min(widthRatio, heightRatio);
+
+        newWidth = Math.round(width * scale);
+        newHeight = Math.round(height * scale);
+      }
+
+      console.log(
+        `[DEBUG] ensureCompatibleImage - New size: ${newWidth}x${newHeight}`
+      );
+
+      // リサイズと変換を実行
+      const processedBuffer = await sharp(imageBuffer)
+        .resize(newWidth, newHeight, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .png()
+        .toBuffer();
+
+      return {
+        buffer: processedBuffer,
+        type: "png",
+      };
+    }
+
+    // サイズが取得できない場合は、PNGに変換するだけ
+    console.log(
+      "[DEBUG] ensureCompatibleImage - No size info, converting to PNG only"
+    );
+    const processedBuffer = await sharp(imageBuffer).png().toBuffer();
 
     return {
       buffer: processedBuffer,
-      type: "png", // Always use PNG for better compatibility
+      type: "png",
     };
   } catch (error) {
     console.error(`Failed to convert image: mimeType=${mimeType}`, error);
 
-    // Try a more basic approach as fallback
+    // エラー時のフォールバック処理
     try {
-      // Use a simpler conversion approach - フォーマット変換のみ
+      console.log("[DEBUG] ensureCompatibleImage - Trying fallback conversion");
       const simpleBuffer = await sharp(imageBuffer).toFormat("png").toBuffer();
 
       return {
@@ -128,7 +145,6 @@ export async function ensureCompatibleImage(
       };
     } catch (secondError) {
       console.error("Failed even with fallback conversion:", secondError);
-      // Return the original buffer as last resort
       return {
         buffer: imageBuffer,
         type: getMappedImageType(mimeType.split("/")[1] || ""),
