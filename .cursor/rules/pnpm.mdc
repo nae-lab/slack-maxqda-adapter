@@ -1,0 +1,10 @@
+---
+description: use pnpm always
+globs: *.ts, *.tsx, *.js, *.jsx, *.json
+alwaysApply: false
+---
+
+# Your rule content
+
+- use `pnpm` command for package management etc. for this project
+- You can use markdown but dont have to

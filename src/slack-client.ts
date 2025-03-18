@@ -113,8 +113,6 @@ export async function fetchChannelMessagesForDateRange(
   endDate: string
 ): Promise<{ date: string; messages: MessageElement[] }[]> {
   try {
-    const results: { date: string; messages: MessageElement[] }[] = [];
-
     // Convert dates to Date objects
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -124,27 +122,95 @@ export async function fetchChannelMessagesForDateRange(
       throw new Error("Invalid date format. Use YYYY-MM-DD");
     }
 
-    // Loop through each day in the range
-    const current = new Date(start);
+    // 日付の範囲全体に対して一度にメッセージを取得
+    const startOldest = new Date(start);
+    startOldest.setHours(0, 0, 0, 0);
+    const endLatest = new Date(end);
+    endLatest.setHours(23, 59, 59, 999);
 
-    while (current <= end) {
-      // Format the current date
-      const dateStr = current.toISOString().split("T")[0];
-      console.log(`Fetching messages for ${dateStr}...`);
+    console.log(`Fetching all messages from ${startDate} to ${endDate}...`);
 
-      // Get messages for the current day
-      const messages = await fetchChannelMessages(channelId, dateStr);
+    // すべてのメッセージを一括取得
+    let allMessages: MessageElement[] = [];
+    let hasMore = true;
+    let cursor: string | undefined;
 
-      if (messages && messages.length > 0) {
-        results.push({
-          date: dateStr,
-          messages: [...messages].reverse(), // Oldest first
-        });
+    while (hasMore) {
+      const { messages, result } = await retrieveMessages(
+        channelId,
+        startOldest.getTime() / 1000,
+        endLatest.getTime() / 1000,
+        cursor
+      );
+
+      if (messages) {
+        allMessages = allMessages.concat(messages);
       }
 
-      // Move to next day
+      hasMore = !!result.has_more;
+      cursor = result.response_metadata?.next_cursor;
+
+      if (!cursor) {
+        hasMore = false;
+      }
+    }
+
+    console.log(`Retrieved ${allMessages.length} messages in total.`);
+
+    // 取得したメッセージを日付ごとに分類
+    const messagesByDate: Record<string, MessageElement[]> = {};
+
+    // 日付範囲内のすべての日付を初期化
+    const current = new Date(start);
+    while (current <= end) {
+      // ローカルタイムゾーンでの日付を取得
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, "0");
+      const day = String(current.getDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${day}`;
+
+      messagesByDate[dateStr] = [];
       current.setDate(current.getDate() + 1);
     }
+
+    // メッセージを日付ごとに仕分け
+    for (const message of allMessages) {
+      if (message.ts) {
+        const timestamp = parseFloat(message.ts) * 1000;
+        const messageDate = new Date(timestamp);
+
+        // ローカルタイムゾーンでの日付を取得
+        const year = messageDate.getFullYear();
+        const month = String(messageDate.getMonth() + 1).padStart(2, "0");
+        const day = String(messageDate.getDate()).padStart(2, "0");
+        const dateStr = `${year}-${month}-${day}`;
+
+        // 指定された日付範囲内のメッセージのみを追加
+        if (messagesByDate[dateStr] !== undefined) {
+          messagesByDate[dateStr].push(message);
+        }
+      }
+    }
+
+    // 結果を整形
+    const results: { date: string; messages: MessageElement[] }[] = [];
+
+    Object.entries(messagesByDate).forEach(([date, messages]) => {
+      if (messages.length > 0) {
+        // メッセージを時刻順（古い順）に並べ替え
+        const sortedMessages = [...messages].sort((a, b) => {
+          return (a.ts ? parseFloat(a.ts) : 0) - (b.ts ? parseFloat(b.ts) : 0);
+        });
+
+        results.push({
+          date,
+          messages: sortedMessages,
+        });
+      }
+    });
+
+    // 日付順に並べ替え
+    results.sort((a, b) => a.date.localeCompare(b.date));
 
     return results;
   } catch (error) {

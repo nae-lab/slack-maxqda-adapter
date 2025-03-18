@@ -6,6 +6,32 @@ import {
 } from "../slack-client";
 import { downloadSlackFile } from "../file-handler";
 
+// キャッシュクラスの実装
+class MentionCache {
+  private static userCache: Map<string, Promise<string>> = new Map();
+  private static groupCache: Map<string, Promise<string>> = new Map();
+
+  static async getUserName(userId: string): Promise<string> {
+    let cachedPromise = this.userCache.get(userId);
+    if (!cachedPromise) {
+      // キャッシュミス時は新しいPromiseを作成してキャッシュに格納
+      cachedPromise = getUserName(userId);
+      this.userCache.set(userId, cachedPromise);
+    }
+    return cachedPromise;
+  }
+
+  static async getGroupName(groupId: string): Promise<string> {
+    let cachedPromise = this.groupCache.get(groupId);
+    if (!cachedPromise) {
+      // キャッシュミス時は新しいPromiseを作成してキャッシュに格納
+      cachedPromise = getUserGroupName(groupId);
+      this.groupCache.set(groupId, cachedPromise);
+    }
+    return cachedPromise;
+  }
+}
+
 /**
  * Slackのメンション（<@U123456>や<!subteam^S123456|group>）をユーザー名やグループ名に置き換える
  *
@@ -22,18 +48,24 @@ export async function replaceMentionToUserName(
   const userMentions = text.match(userMentionRegex);
 
   if (userMentions) {
-    for (const mention of userMentions) {
+    // 全てのユーザー名の解決を並列で行う
+    const userPromises = userMentions.map(async (mention) => {
       const userId = mention.replace(/<@|>/g, "");
-      const userName = await getUserName(userId);
+      const userName = await MentionCache.getUserName(userId);
+      return { mention, userName };
+    });
 
+    // 全てのユーザー名が解決されるのを待つ
+    const resolvedUsers = await Promise.all(userPromises);
+
+    // テキストの置換
+    for (const { mention, userName } of resolvedUsers) {
       if (useHtml) {
-        // DOCX用のHTML形式
         text = text.replace(
           mention,
           `<span class="underline">@${userName}</span>`
         );
       } else {
-        // Markdown用のシンプルな形式
         text = text.replace(mention, `@${userName}`);
       }
     }
@@ -44,25 +76,35 @@ export async function replaceMentionToUserName(
   const groupMentions = text.match(groupMentionRegex);
 
   if (groupMentions) {
-    for (const mention of groupMentions) {
+    // 全てのグループ名の解決を並列で行う
+    const groupPromises = groupMentions.map(async (mention) => {
       const match = mention.match(/<!subteam\^([A-Z0-9]+)\|([^>]*)>/);
       if (match && match[1]) {
         const groupId = match[1];
         const displayName = match[2];
-        const groupName = await getUserGroupName(groupId);
-        const displayGroupName =
-          groupName !== groupId ? groupName : displayName;
+        const groupName = await MentionCache.getGroupName(groupId);
+        return {
+          mention,
+          displayGroupName: groupName !== groupId ? groupName : displayName,
+        };
+      }
+      return null;
+    });
 
-        if (useHtml) {
-          // DOCX用のHTML形式
-          text = text.replace(
-            mention,
-            `<span class="underline">@${displayGroupName}</span>`
-          );
-        } else {
-          // Markdown用のシンプルな形式
-          text = text.replace(mention, `@${displayGroupName}`);
-        }
+    // 全てのグループ名が解決されるのを待つ
+    const resolvedGroups = (await Promise.all(groupPromises)).filter(
+      (group): group is NonNullable<typeof group> => group !== null
+    );
+
+    // テキストの置換
+    for (const { mention, displayGroupName } of resolvedGroups) {
+      if (useHtml) {
+        text = text.replace(
+          mention,
+          `<span class="underline">@${displayGroupName}</span>`
+        );
+      } else {
+        text = text.replace(mention, `@${displayGroupName}`);
       }
     }
   }
@@ -72,18 +114,24 @@ export async function replaceMentionToUserName(
   const directGroupMentions = text.match(directGroupMentionRegex);
 
   if (directGroupMentions) {
-    for (const mention of directGroupMentions) {
+    // 全ての直接グループメンションの解決を並列で行う
+    const directGroupPromises = directGroupMentions.map(async (mention) => {
       const groupId = mention.substring(1); // @を除去
-      const groupName = await getUserGroupName(groupId);
+      const groupName = await MentionCache.getGroupName(groupId);
+      return { mention, groupName };
+    });
 
+    // 全てのグループ名が解決されるのを待つ
+    const resolvedDirectGroups = await Promise.all(directGroupPromises);
+
+    // テキストの置換
+    for (const { mention, groupName } of resolvedDirectGroups) {
       if (useHtml) {
-        // DOCX用のHTML形式
         text = text.replace(
           mention,
           `<span class="underline">@${groupName}</span>`
         );
       } else {
-        // Markdown用のシンプルな形式
         text = text.replace(mention, `@${groupName}`);
       }
     }

@@ -28,5 +28,11 @@ export const args = yargs(hideBin(process.argv))
       choices: ["docx", "md"],
       default: "docx",
     },
+    concurrency: {
+      alias: "p",
+      type: "number",
+      description: "並列処理の同時実行数",
+      default: 4,
+    },
   })
   .parseSync();
