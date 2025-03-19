@@ -99,17 +99,15 @@ async function processImageFile(
     // 画像サイズを取得
     const dimensions = await getImageDimensions(
       compatibleImage.buffer,
-      compatibleImage.type,
-      styles.image.maxWidth,
-      styles.image.maxHeight
+      compatibleImage.type
     );
 
     // 画像を追加
     paragraphs.push(
       createImageParagraph(
         compatibleImage.buffer,
-        dimensions.scaledWidth,
-        dimensions.scaledHeight,
+        dimensions.width,
+        dimensions.height,
         compatibleImage.type,
         indent
       )

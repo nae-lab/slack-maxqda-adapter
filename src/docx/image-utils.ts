@@ -3,14 +3,10 @@ import sharp from "sharp";
 // Helper function to get image dimensions and calculate aspect ratio
 export async function getImageDimensions(
   imageBuffer: Buffer,
-  mimeType: string,
-  maxWidth: number = 500, // Default max width to prevent page overflow
-  maxHeight: number = 350 // Default max height (約半ページの高さ)
+  mimeType: string
 ): Promise<{
   width: number;
   height: number;
-  scaledWidth: number;
-  scaledHeight: number;
 }> {
   let width = 0;
   let height = 0;
@@ -42,13 +38,9 @@ export async function getImageDimensions(
     }
   }
 
-  // 既に適切なサイズに調整されている可能性があるため、
-  // 元のサイズをそのまま返す
   return {
     width,
     height,
-    scaledWidth: width,
-    scaledHeight: height,
   };
 }
 

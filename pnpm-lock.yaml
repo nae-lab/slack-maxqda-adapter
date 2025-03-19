@@ -11,6 +11,9 @@ importers:
       '@slack/web-api':
         specifier: ^7.3.2
         version: 7.3.2
+      '@supercharge/promise-pool':
+        specifier: ^3.2.0
+        version: 3.2.0
       app-root-path:
         specifier: ^3.1.0
         version: 3.1.0
@@ -473,6 +476,10 @@ packages:
   '@slack/web-api@7.3.2':
     resolution: {integrity: sha512-hyxwSsUhpOEVN5ORB3ne7TAXQwXl0wxBAyNTCfp4Qc/o9rpEEvY4kfsx7mZF5AhYPcdEeI1XP2bSFrh3W/HGKQ==}
     engines: {node: '>= 18', npm: '>= 8.6.0'}
+
+  '@supercharge/promise-pool@3.2.0':
+    resolution: {integrity: sha512-pj0cAALblTZBPtMltWOlZTQSLT07jIaFNeM8TWoJD1cQMgDB9mcMlVMoetiB35OzNJpqQ2b+QEtwiR9f20mADg==}
+    engines: {node: '>=8'}
 
   '@tsconfig/node10@1.0.11':
     resolution: {integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==}
@@ -1553,6 +1560,8 @@ snapshots:
       retry: 0.13.1
     transitivePeerDependencies:
       - debug
+
+  '@supercharge/promise-pool@3.2.0': {}
 
   '@tsconfig/node10@1.0.11': {}
 
