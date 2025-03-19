@@ -6,7 +6,7 @@ import {
   createImageTitleParagraph,
   createImageParagraph,
 } from "../paragraph-formatters";
-import { getImageDimensions, ensureCompatibleImage } from "../image-utils";
+import { ensureCompatibleImage } from "../image-utils";
 import { styles } from "../styles";
 import * as fs from "fs";
 import * as path from "path";
@@ -96,18 +96,12 @@ async function processImageFile(
       styles.image.maxHeight
     );
 
-    // 画像サイズを取得
-    const dimensions = await getImageDimensions(
-      compatibleImage.buffer,
-      compatibleImage.type
-    );
-
     // 画像を追加
     paragraphs.push(
       createImageParagraph(
         compatibleImage.buffer,
-        dimensions.width,
-        dimensions.height,
+        compatibleImage.width,
+        compatibleImage.height,
         compatibleImage.type,
         indent
       )

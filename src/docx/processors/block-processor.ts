@@ -20,7 +20,7 @@ import {
   createImageParagraph,
 } from "../paragraph-formatters";
 import { processMessageText } from "./text-processor";
-import { getImageDimensions, ensureCompatibleImage } from "../image-utils";
+import { ensureCompatibleImage } from "../image-utils";
 
 export async function processMessageBlocks(
   blocks: Block[],
@@ -243,18 +243,12 @@ async function processImageBlock(
             styles.image.maxHeight
           );
 
-          // 画像サイズを制限
-          const dimensions = await getImageDimensions(
-            compatibleImage.buffer,
-            compatibleImage.type
-          );
-
           // 画像を追加
           paragraphs.push(
             createImageParagraph(
               compatibleImage.buffer,
-              dimensions.width,
-              dimensions.height,
+              compatibleImage.width,
+              compatibleImage.height,
               compatibleImage.type,
               { indent }
             )

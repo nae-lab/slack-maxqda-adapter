@@ -243,13 +243,42 @@ export function createImageParagraph(
   imageType: string,
   options = {}
 ) {
+  // アスペクト比を維持しながら最大サイズを設定
+  const maxWidth = styles.image.maxWidth;
+  const maxHeight = styles.image.maxHeight;
+  const aspectRatio = width / height;
+
+  let finalWidth, finalHeight;
+
+  if (aspectRatio > 1) {
+    // 横長の画像
+    finalWidth = Math.min(width, maxWidth);
+    finalHeight = Math.round(finalWidth / aspectRatio);
+
+    // 高さが最大値を超える場合は調整
+    if (finalHeight > maxHeight) {
+      finalHeight = maxHeight;
+      finalWidth = Math.round(finalHeight * aspectRatio);
+    }
+  } else {
+    // 縦長の画像
+    finalHeight = Math.min(height, maxHeight);
+    finalWidth = Math.round(finalHeight * aspectRatio);
+
+    // 幅が最大値を超える場合は調整
+    if (finalWidth > maxWidth) {
+      finalWidth = maxWidth;
+      finalHeight = Math.round(finalWidth / aspectRatio);
+    }
+  }
+
   return new Paragraph({
     children: [
       new ImageRun({
         data: imageBuffer,
         transformation: {
-          width,
-          height,
+          width: finalWidth,
+          height: finalHeight,
         },
         type: getMappedImageType(imageType),
       }),

@@ -1,49 +1,5 @@
 import sharp from "sharp";
 
-// Helper function to get image dimensions and calculate aspect ratio
-export async function getImageDimensions(
-  imageBuffer: Buffer,
-  mimeType: string
-): Promise<{
-  width: number;
-  height: number;
-}> {
-  let width = 0;
-  let height = 0;
-
-  // Only try to get dimensions if it's an image
-  if (mimeType && mimeType.startsWith("image/")) {
-    try {
-      const metadata = await sharp(imageBuffer).metadata();
-      if (metadata.width && metadata.height) {
-        width = metadata.width;
-        height = metadata.height;
-      }
-    } catch (error) {
-      console.error("Failed to get image dimensions:", error);
-    }
-  }
-
-  // Default fallback dimensions - different defaults based on content type
-  if (width === 0 || height === 0) {
-    if (mimeType && mimeType.startsWith("audio/")) {
-      width = 300;
-      height = 60;
-    } else if (mimeType && mimeType.startsWith("video/")) {
-      width = 400;
-      height = 225;
-    } else {
-      width = 400;
-      height = 300;
-    }
-  }
-
-  return {
-    width,
-    height,
-  };
-}
-
 // Helper function to convert MIME types to valid docx image types
 export function getMappedImageType(
   mimeSubtype: string
@@ -67,16 +23,17 @@ export async function ensureCompatibleImage(
   mimeType: string,
   maxWidth: number = 1000,
   maxHeight: number = 1000
-): Promise<{ buffer: Buffer; type: "jpg" | "png" | "gif" | "bmp" }> {
+): Promise<{
+  buffer: Buffer;
+  type: "jpg" | "png" | "gif" | "bmp";
+  width: number;
+  height: number;
+}> {
   try {
     // 画像のメタデータを取得
     const metadata = await sharp(imageBuffer).metadata();
     const width = metadata.width || 0;
     const height = metadata.height || 0;
-
-    console.log(
-      `[DEBUG] ensureCompatibleImage - Original size: ${width}x${height}`
-    );
 
     // アスペクト比を計算
     if (width > 0 && height > 0) {
@@ -94,52 +51,65 @@ export async function ensureCompatibleImage(
         newHeight = Math.round(height * scale);
       }
 
-      console.log(
-        `[DEBUG] ensureCompatibleImage - New size: ${newWidth}x${newHeight}`
-      );
-
       // リサイズと変換を実行
       const processedBuffer = await sharp(imageBuffer)
-        .resize(newWidth, newHeight, {
+        .rotate() // 自動回転を適用
+        .resize(newWidth * 3, newHeight * 3, {
+          // 3倍の解像度でリサイズ
           fit: "inside",
           withoutEnlargement: true,
         })
-        .png()
+        .png({
+          compressionLevel: 9, // 最高圧縮（処理は遅くなるが、ファイルサイズを最小化）
+          quality: 90, // 90%の品質を維持
+        })
         .toBuffer();
 
       return {
         buffer: processedBuffer,
         type: "png",
+        width: newWidth, // DOCXでの表示サイズは元のまま
+        height: newHeight,
       };
     }
 
     // サイズが取得できない場合は、PNGに変換するだけ
-    console.log(
-      "[DEBUG] ensureCompatibleImage - No size info, converting to PNG only"
-    );
-    const processedBuffer = await sharp(imageBuffer).png().toBuffer();
+    const processedBuffer = await sharp(imageBuffer)
+      .png({
+        compressionLevel: 9,
+      })
+      .toBuffer();
 
     return {
       buffer: processedBuffer,
       type: "png",
+      width: 400, // デフォルトサイズ
+      height: 300,
     };
   } catch (error) {
     console.error(`Failed to convert image: mimeType=${mimeType}`, error);
 
     // エラー時のフォールバック処理
     try {
-      console.log("[DEBUG] ensureCompatibleImage - Trying fallback conversion");
-      const simpleBuffer = await sharp(imageBuffer).toFormat("png").toBuffer();
+      const simpleBuffer = await sharp(imageBuffer)
+        .toFormat("png", {
+          compressionLevel: 9,
+        })
+        .toBuffer();
 
       return {
         buffer: simpleBuffer,
         type: "png",
+        width: 400, // デフォルトサイズ
+        height: 300,
       };
     } catch (secondError) {
       console.error("Failed even with fallback conversion:", secondError);
       return {
         buffer: imageBuffer,
         type: getMappedImageType(mimeType.split("/")[1] || ""),
+        width: 400, // デフォルトサイズ
+        height: 300,
       };
     }
   }
