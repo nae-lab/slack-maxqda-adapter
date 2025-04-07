@@ -2,16 +2,91 @@
 
 English [README.md](./README.md).
 
-## セットアップ
-- 以下のコマンドで依存関係をインストールします：
-  ```sh
-  pnpm install
-  ```
-- プロジェクトのルートディレクトリに、Slack APIトークンを記載した`.env`ファイルを作成します：
-  ```
-  SLACK_API_TOKEN=your_slack_api_token
-  ```
-- pandocがシステムにインストールされていることを確認してください。
+## クイックスタート
+```sh
+git clone https://github.com/nae-lab/slack-maxqda-adapter.git
+cd slack-maxqda-adapter
+pnpm install
+echo "SLACK_API_TOKEN=your_slack_api_token" > .env
+pnpm main -c CHANNEL_ID -s 2024-04-01 -e 2025-03-11
+```
+
+## 詳細セットアップ手順
+
+### 1. 必要なソフトウェアのインストール
+
+#### Node.jsのインストール
+1. [Node.jsの公式サイト](https://nodejs.org/)にアクセス
+2. 「LTS」と書かれているバージョンをダウンロード
+3. ダウンロードしたインストーラーを実行し、指示に従ってインストール
+
+### 2. ターミナルの開き方
+
+#### Windowsの場合
+1. Windowsキー + R キーを押して「ファイル名を指定して実行」を開く
+2. `cmd` と入力してEnterキーを押す
+   - または、スタートメニューで「コマンドプロンプト」を検索
+
+#### Macの場合
+1. Command + スペースキーを押して「Spotlight検索」を開く
+2. `ターミナル` と入力してEnterキーを押す
+   - または、アプリケーション > ユーティリティ > ターミナル
+
+### 3. プロジェクトのセットアップ
+1. このリポジトリをダウンロード
+   - [ZIPファイルをダウンロード](https://github.com/nae-lab/slack-maxqda-adapter/archive/refs/heads/main.zip)して解凍
+   - または、ターミナルで以下のコマンドを実行：
+     ```sh
+     git clone https://github.com/nae-lab/slack-maxqda-adapter.git
+     ```
+
+2. ターミナルでプロジェクトフォルダに移動
+   ```sh
+   cd slack-maxqda-adapter
+   ```
+
+3. 依存関係のインストール
+   ```sh
+   pnpm install
+   ```
+   - エラーが出た場合は、以下のコマンドでpnpmをインストールしてから再試行：
+     ```sh
+     npm install -g pnpm
+     ```
+
+4. Slack APIトークンの設定
+   - Windowsの場合：
+     ```sh
+     echo SLACK_API_TOKEN=your_slack_api_token > .env
+     ```
+   - Macの場合：
+     ```sh
+     echo "SLACK_API_TOKEN=your_slack_api_token" > .env
+     ```
+   - または、テキストエディタで`.env`ファイルを作成：
+     1. プロジェクトフォルダ内に`.env`という名前の新規ファイルを作成
+     2. 以下の内容を記入（`your_slack_api_token`を実際のトークンに置き換え）：
+        ```
+        SLACK_API_TOKEN=your_slack_api_token
+        ```
+
+### 4. 使用方法
+
+#### 基本的な使い方
+1. ターミナルでプロジェクトフォルダに移動（既に移動している場合は不要）
+   ```sh
+   cd slack-maxqda-adapter
+   ```
+
+2. 以下のコマンドを実行（パラメータは適宜変更）：
+   ```sh
+   pnpm main -c CHANNEL_ID -s 2024-04-01 -e 2025-03-11
+   ```
+
+   パラメータの説明：
+   - `-c CHANNEL_ID`: Slackチャンネルのチャンネルコード
+   - `-s 2024-04-01`: エクスポート開始日（YYYY-MM-DD形式）
+   - `-e 2025-03-11`: エクスポート終了日（YYYY-MM-DD形式）
 
 ## 必要なSlackトークンのスコープ
 

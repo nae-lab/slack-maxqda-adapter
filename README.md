@@ -2,16 +2,91 @@
 
 日本語 [README.ja.md](./README.ja.md).
 
-## Setup
-- Install dependencies with:
-  ```sh
-  pnpm install
-  ```
-- Create a `.env` file in the project root with your Slack API token:
-  ```
-  SLACK_API_TOKEN=your_slack_api_token
-  ```
-- Ensure pandoc is installed on your system.
+## Quick Start
+```sh
+git clone https://github.com/nae-lab/slack-maxqda-adapter.git
+cd slack-maxqda-adapter
+pnpm install
+echo "SLACK_API_TOKEN=your_slack_api_token" > .env
+pnpm main -c CHANNEL_ID -s 2024-04-01 -e 2025-03-11
+```
+
+## Detailed Setup Instructions
+
+### 1. Install Required Software
+
+#### Install Node.js
+1. Visit [Node.js official website](https://nodejs.org/)
+2. Download the version marked as "LTS"
+3. Run the installer and follow the installation instructions
+
+### 2. Opening Terminal
+
+#### Windows
+1. Press Windows key + R to open "Run"
+2. Type `cmd` and press Enter
+   - Or search for "Command Prompt" in the Start menu
+
+#### Mac
+1. Press Command + Space to open "Spotlight Search"
+2. Type `terminal` and press Enter
+   - Or navigate to Applications > Utilities > Terminal
+
+### 3. Project Setup
+1. Download this repository
+   - [Download ZIP file](https://github.com/nae-lab/slack-maxqda-adapter/archive/refs/heads/main.zip) and extract
+   - Or, run the following command in terminal:
+     ```sh
+     git clone https://github.com/nae-lab/slack-maxqda-adapter.git
+     ```
+
+2. Navigate to the project folder in Terminal
+   ```sh
+   cd slack-maxqda-adapter
+   ```
+
+3. Install dependencies
+   ```sh
+   pnpm install
+   ```
+   - If you get an error, install pnpm first and try again:
+     ```sh
+     npm install -g pnpm
+     ```
+
+4. Configure Slack API Token
+   - For Windows:
+     ```sh
+     echo SLACK_API_TOKEN=your_slack_api_token > .env
+     ```
+   - For Mac:
+     ```sh
+     echo "SLACK_API_TOKEN=your_slack_api_token" > .env
+     ```
+   - Or create `.env` file using a text editor:
+     1. Create a new file named `.env` in the project folder
+     2. Add the following content (replace `your_slack_api_token` with your actual token):
+        ```
+        SLACK_API_TOKEN=your_slack_api_token
+        ```
+
+### 4. Usage
+
+#### Basic Usage
+1. Navigate to the project folder in terminal (skip if already there)
+   ```sh
+   cd slack-maxqda-adapter
+   ```
+
+2. Run the following command (modify parameters as needed):
+   ```sh
+   pnpm main -c CHANNEL_ID -s 2024-04-01 -e 2025-03-11
+   ```
+
+   Parameter description:
+   - `-c CHANNEL_ID`: Slack channel code
+   - `-s 2024-04-01`: Export start date (YYYY-MM-DD format)
+   - `-e 2025-03-11`: Export end date (YYYY-MM-DD format)
 
 ## Required Slack Token Scopes
 
@@ -43,7 +118,7 @@ pnpm main -c CHANNEL_ID -s 2024-04-01 -e 2025-03-11 -f md
 
 This script retrieves messages over a multi-month date range and converts them to the specified format.
 
-### Output Formats
+## Output Formats
 
 #### DOCX Format
 - Compatible with MAXQDA
