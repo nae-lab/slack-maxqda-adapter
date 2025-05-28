@@ -1,15 +1,14 @@
 import {
   MessageElement,
   Reaction,
-  PurpleBlock as Block,
   BlockType,
   PurpleElement,
-  FluffyType,
   AccessoryElement as RichTextElement,
   FileElement,
   SlackFile as OriginalSlackFile,
   PurpleType,
   Accessory,
+  AssistantAppThreadBlock,
 } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 import { ConversationsHistoryResponse } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 
@@ -36,11 +35,10 @@ export {
   PurpleElement,
   BlockType,
   PurpleType,
-  FluffyType,
-  Block,
   RichTextElement,
   FileElement,
   Accessory,
+  AssistantAppThreadBlock as Block,
 };
 
 // FileElementからSlackFileへの変換関数

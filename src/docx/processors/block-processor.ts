@@ -4,11 +4,12 @@ import { styles } from "../styles";
 import {
   Block,
   PurpleType,
-  FluffyType,
   PurpleElement,
   RichTextElement,
   Accessory,
+  BlockType,
 } from "../../types";
+import { AccessoryType } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 import {
   createSeparatorParagraph,
   createImageTitleParagraph,
@@ -121,19 +122,19 @@ async function processRichTextElement(
   if (!element.type) return;
 
   switch (element.type) {
-    case FluffyType.RichTextSection:
+    case AccessoryType.RichTextSection:
       await processRichTextSection(element, paragraphs, indent);
       break;
 
-    case FluffyType.RichTextPreformatted:
+    case AccessoryType.RichTextPreformatted:
       await processRichTextPreformatted(element, paragraphs, indent);
       break;
 
-    case FluffyType.RichTextQuote:
+    case AccessoryType.RichTextQuote:
       await processRichTextQuote(element, paragraphs, indent);
       break;
 
-    case FluffyType.RichTextList:
+    case AccessoryType.RichTextList:
       await processRichTextList(element, paragraphs, indent);
       break;
   }
@@ -415,7 +416,7 @@ async function processRichTextList(
     // 比較の問題を修正：文字列で比較する
     if (
       item.type &&
-      item.type.toString() === FluffyType.RichTextSection.toString()
+      item.type.toString() === AccessoryType.RichTextSection.toString()
     ) {
       // 直接processListItemTextを呼び出す（フォーマットされたテキストを取得）
       const bulletChar = isOrdered ? `${counter}. ` : "• ";

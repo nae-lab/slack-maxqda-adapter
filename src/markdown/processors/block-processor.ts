@@ -1,11 +1,11 @@
 import {
   Block,
   PurpleType,
-  FluffyType,
   PurpleElement,
   RichTextElement,
   Accessory,
 } from "../../types";
+import { AccessoryType } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 import { processMessageText } from "./text-processor";
 
 // Process Slack Block Kit blocks for markdown output
@@ -62,16 +62,16 @@ async function processRichTextBlock(
     for (const accessory of block.elements) {
       // Blockのelementsは実際にはAccessory[]
       if (accessory.type) {
-        if (accessory.type.toString() === FluffyType.RichTextSection) {
+        if (accessory.type.toString() === AccessoryType.RichTextSection) {
           text += await processRichTextSection(
             accessory as unknown as RichTextElement
           );
-        } else if (accessory.type.toString() === FluffyType.RichTextQuote) {
+        } else if (accessory.type.toString() === AccessoryType.RichTextQuote) {
           text += await processRichTextQuote(
             accessory as unknown as RichTextElement,
             indentLevel
           );
-        } else if (accessory.type.toString() === FluffyType.RichTextList) {
+        } else if (accessory.type.toString() === AccessoryType.RichTextList) {
           text += await processRichTextList(
             accessory as unknown as RichTextElement,
             indentLevel

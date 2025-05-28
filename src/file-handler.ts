@@ -89,8 +89,8 @@ export async function downloadSlackFile(
       });
       const writer = fs.createWriteStream(outputPath);
       response.data.pipe(writer);
-      await new Promise((resolve, reject) => {
-        writer.on("finish", resolve);
+      await new Promise<void>((resolve, reject) => {
+        writer.on("finish", () => resolve());
         writer.on("error", reject);
       });
       console.log(`Successfully downloaded file to ${outputPath}`);

@@ -160,6 +160,7 @@ pnpm main -c CHANNEL_ID -s 2024-04-01 -e 2025-03-11          # エクスポー�
 - `mpim:history`
 - `files:read`
 - `groups:history`
+- `groups:read`
 - `remote_files:read`
 - `team:read`
 - `users:read`

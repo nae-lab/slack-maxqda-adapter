@@ -151,6 +151,7 @@ If you are new to command line operations, please refer to these official guides
 - `mpim:history`
 - `files:read`
 - `groups:history`
+- `groups:read`
 - `remote_files:read`
 - `team:read`
 - `users:read`
