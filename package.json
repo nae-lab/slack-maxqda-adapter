@@ -16,27 +16,27 @@
   "license": "MIT",
   "packageManager": "pnpm@10.6.2+sha512.47870716bea1572b53df34ad8647b42962bc790ce2bf4562ba0f643237d7302a3d6a8ecef9e4bdfc01d23af1969aa90485d4cebb0b9638fa5ef1daef656f6c1b",
   "devDependencies": {
-    "@types/node": "^22.1.0",
-    "@types/yargs": "^17.0.32",
-    "@vitest/ui": "^3.0.8",
+    "@types/node": "^22.15.23",
+    "@types/yargs": "^17.0.33",
+    "@vitest/ui": "^3.1.4",
     "c8": "^10.1.3",
-    "dotenv": "^16.4.5",
-    "happy-dom": "^17.4.4",
+    "dotenv": "^16.5.0",
+    "happy-dom": "^17.5.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.4",
-    "vitest": "^3.0.8"
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
   },
   "dependencies": {
-    "@slack/web-api": "^7.3.2",
+    "@slack/web-api": "^7.9.2",
     "@supercharge/promise-pool": "^3.2.0",
     "app-root-path": "^3.1.0",
-    "axios": "^1.7.9",
-    "docx": "^9.2.0",
+    "axios": "^1.9.0",
+    "docx": "^9.5.0",
     "emoji-datasource": "^15.1.2",
-    "node-emoji": "^2.1.3",
+    "node-emoji": "^2.2.0",
     "node-fetch": "^3.3.2",
-    "sharp": "^0.33.3",
-    "universal-emoji-parser": "^2.0.11",
+    "sharp": "^0.33.5",
+    "universal-emoji-parser": "^2.0.52",
     "yargs": "^17.7.2"
   }
 }

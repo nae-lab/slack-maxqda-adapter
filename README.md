@@ -145,6 +145,10 @@ If you are new to command line operations, please refer to these official guides
 
 - `channels:history`
 - `channels:read`
+- `im:read`
+- `im:history`
+- `mpim:read`
+- `mpim:history`
 - `files:read`
 - `groups:history`
 - `remote_files:read`
