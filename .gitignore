@@ -140,3 +140,5 @@ dist
 !README.ja.md
 references
 files
+.cursor/rules/derived-cursor-rules.mdc
+.specstory/
