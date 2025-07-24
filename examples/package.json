@@ -1,0 +1,20 @@
+{
+  "name": "slack-exporter-example",
+  "version": "1.0.0",
+  "description": "Example usage of slack-exporter library",
+  "main": "library-usage.js",
+  "scripts": {
+    "dev": "ts-node library-usage.ts",
+    "build": "tsc library-usage.ts",
+    "start": "node library-usage.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.0",
+    "slack-exporter": "file:.."
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.23",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

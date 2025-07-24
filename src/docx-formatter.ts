@@ -13,6 +13,18 @@ import {
 import { ensureDirectoryExists } from "./config";
 import { args } from "./args";
 
+// Function to get concurrency setting (library or args)
+function getConcurrency(): number {
+  try {
+    // Try to use library setting first
+    const { SlackExporter } = require("./lib/slack-exporter");
+    return SlackExporter.getConcurrency();
+  } catch {
+    // Fallback to args if library not available
+    return args.concurrency;
+  }
+}
+
 // Main export function to create a Word document from Slack messages
 export async function exportToWordDocument(
   messagesByDate: { date: string; messages: MessageElement[] }[],
@@ -20,12 +32,11 @@ export async function exportToWordDocument(
   channelName: string,
   outputPath: string
 ): Promise<string> {
-  console.log(`メッセージ処理を開始します (並列度: ${args.concurrency})`);
+  const concurrency = getConcurrency();
+  console.log(`メッセージ処理を開始します (並列度: ${concurrency})`);
 
   // Process each day's messages in parallel
-  const { results: dayResults } = await PromisePool.withConcurrency(
-    args.concurrency
-  )
+  const { results: dayResults } = await PromisePool.withConcurrency(concurrency)
     .for(messagesByDate.map((item, index) => ({ ...item, index })))
     .process(async ({ date, messages, index }) => {
       const dayChildren: Paragraph[] = [];

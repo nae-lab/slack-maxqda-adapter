@@ -1,17 +1,37 @@
 {
   "name": "slack-exporter",
   "version": "2.1.4",
-  "description": "",
-  "main": "index.js",
+  "description": "Export Slack messages to DOCX and Markdown formats",
+  "main": "dist/lib/index.js",
+  "module": "dist/lib/index.js",
+  "types": "dist/lib/index.d.ts",
+  "bin": {
+    "slack-exporter": "dist/main.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "main": "ts-node src/main.ts",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "build:dry": "tsc --noEmit"
   },
-  "keywords": [],
+  "keywords": [
+    "slack",
+    "export",
+    "docx",
+    "markdown",
+    "messages",
+    "typescript"
+  ],
   "author": "",
   "license": "MIT",
   "packageManager": "pnpm@10.6.2+sha512.47870716bea1572b53df34ad8647b42962bc790ce2bf4562ba0f643237d7302a3d6a8ecef9e4bdfc01d23af1969aa90485d4cebb0b9638fa5ef1daef656f6c1b",
