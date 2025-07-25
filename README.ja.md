@@ -164,6 +164,7 @@ pnpm main -c CHANNEL_ID -s 2024-04-01 -e 2025-03-11          # エクスポー�
 - `remote_files:read`
 - `team:read`
 - `users:read`
+- `emoji:read`
 
 ## ツールの詳細
 このツールは、指定されたチャンネルと日付範囲からSlackメッセージを取得します。主な機能：

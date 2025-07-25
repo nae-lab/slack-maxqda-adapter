@@ -172,6 +172,7 @@ interface ExportResult {
    - `mpim:history`
    - `users:read`
    - `files:read`
+   - `emoji:read`
 5. Install the app to your workspace
 6. Copy the "Bot User OAuth Token"
 

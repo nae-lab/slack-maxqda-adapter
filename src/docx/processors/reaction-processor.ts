@@ -4,7 +4,7 @@ import { Reaction } from "../../types";
 import { getUserName } from "../../slack-client";
 import { styles } from "../styles";
 import { getMappedImageType } from "../image-utils";
-import { getEmojiRepresentation } from "../emoji-utils";
+import { getEmojiRepresentation, getEmojiRepresentationWithUrl } from "../emoji-utils";
 
 export async function createReactionParagraphs(
   reactions: Reaction[],
@@ -30,17 +30,25 @@ export async function createReactionParagraphs(
     }
 
     // Add emoji as Unicode character or custom emoji image
-    if (reaction.url) {
+    let emojiUrl = reaction.url;
+    
+    // If no URL is provided in reaction, try to get it from custom emoji cache
+    if (!emojiUrl && reaction.name) {
+      const emojiInfo = await getEmojiRepresentationWithUrl(reaction.name);
+      emojiUrl = emojiInfo.url;
+    }
+    
+    if (emojiUrl) {
       // This is a custom emoji with an image URL
       try {
         // Download the emoji image
-        const response = await axios.get(reaction.url, {
+        const response = await axios.get(emojiUrl, {
           responseType: "arraybuffer",
         });
         const imageBuffer = Buffer.from(response.data);
 
         // Determine image type from URL
-        const urlExtension = reaction.url.split(".").pop()?.toLowerCase() || "";
+        const urlExtension = emojiUrl.split(".").pop()?.toLowerCase() || "";
         const imageType = getMappedImageType(urlExtension);
 
         // Add the image run
@@ -55,7 +63,7 @@ export async function createReactionParagraphs(
           })
         );
       } catch (error) {
-        console.error(`Failed to download emoji image: ${reaction.url}`, error);
+        console.error(`Failed to download emoji image: ${emojiUrl}`, error);
         // Fallback to text
         reactionChildren.push(
           new TextRun({

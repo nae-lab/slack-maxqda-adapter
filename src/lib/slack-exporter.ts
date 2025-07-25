@@ -5,6 +5,7 @@ import {
   fetchChannelMessagesForDateRange,
   getChannelName,
   getAvailableChannels,
+  getCustomEmoji,
 } from "../slack-client";
 import { exportToWordDocument } from "../docx-formatter";
 import { exportToMarkdown } from "../markdown/markdown-formatter";
@@ -44,6 +45,9 @@ export class SlackExporter {
 
     // Use startDate as endDate if not provided
     const actualEndDate = endDate || startDate;
+
+    // Initialize custom emoji cache early to ensure it's available for processing
+    await getCustomEmoji();
 
     // Get channel name
     const channelName = await getChannelName(channelId);

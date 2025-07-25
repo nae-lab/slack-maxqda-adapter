@@ -406,3 +406,61 @@ export async function getUserGroupName(
     return usergroupId;
   }
 }
+
+// Custom emoji cache
+let customEmojiCache: Record<string, string> | null = null;
+
+/**
+ * Fetch and cache custom emoji from the workspace
+ * @returns A mapping of emoji names to their URLs
+ */
+export async function getCustomEmoji(): Promise<Record<string, string>> {
+  // Return cached emoji if available
+  if (customEmojiCache !== null) {
+    return customEmojiCache;
+  }
+
+  try {
+    const response = await getClient().emoji.list();
+    
+    if (response.ok && response.emoji) {
+      // Filter to only include custom emoji (URLs, not standard Unicode references)
+      const customEmojis: Record<string, string> = {};
+      
+      for (const [name, url] of Object.entries(response.emoji)) {
+        // Custom emoji have URLs, while standard emoji have "alias:other_emoji" format
+        if (typeof url === 'string' && (url.startsWith('http') || url.startsWith('data:'))) {
+          customEmojis[name] = url;
+        }
+      }
+      
+      customEmojiCache = customEmojis;
+      return customEmojis;
+    }
+    
+    console.warn('Failed to fetch custom emoji list');
+    customEmojiCache = {};
+    return {};
+  } catch (error) {
+    console.error('Error fetching custom emoji:', error);
+    customEmojiCache = {};
+    return {};
+  }
+}
+
+/**
+ * Get the URL for a custom emoji by name
+ * @param emojiName The name of the emoji (without colons)
+ * @returns The URL if it's a custom emoji, undefined otherwise
+ */
+export async function getCustomEmojiUrl(emojiName: string): Promise<string | undefined> {
+  const customEmojis = await getCustomEmoji();
+  return customEmojis[emojiName];
+}
+
+/**
+ * Clear the custom emoji cache (useful for testing or manual refresh)
+ */
+export function clearCustomEmojiCache(): void {
+  customEmojiCache = null;
+}

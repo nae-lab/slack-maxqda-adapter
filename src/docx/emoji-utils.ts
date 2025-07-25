@@ -1,6 +1,7 @@
 import uEmojiParser from "universal-emoji-parser";
 // Import emoji data
 import emojiData from "emoji-datasource/emoji.json";
+import { getCustomEmojiUrl } from "../slack-client";
 
 // Helper function to convert unified string to actual emoji
 export function unifiedToEmoji(unified: string): string {
@@ -22,4 +23,17 @@ export function getEmojiRepresentation(name: string): string {
     uEmojiParser.parseToUnicode(`:${name}:`) ||
     `:${name}:`
   );
+}
+
+// Enhanced function to get emoji representation with custom emoji URL support
+export async function getEmojiRepresentationWithUrl(name: string): Promise<{ text: string; url?: string }> {
+  // First check if it's a custom emoji
+  const customUrl = await getCustomEmojiUrl(name);
+  if (customUrl) {
+    return { text: `:${name}:`, url: customUrl };
+  }
+  
+  // Fallback to standard emoji representation
+  const text = getEmojiRepresentation(name);
+  return { text };
 }
