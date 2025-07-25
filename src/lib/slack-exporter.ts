@@ -1,5 +1,5 @@
 import path from "path";
-import { SlackExporterOptions, ExportOptions, ExportResult } from "./types";
+import { SlackMaxqdaAdapterOptions, ExportOptions, ExportResult } from "./types";
 import { initializeSlackClient } from "./config";
 import {
   fetchChannelMessagesForDateRange,
@@ -14,10 +14,10 @@ import { ensureDirectoryExists } from "../config";
 // Store concurrency setting for formatters
 let currentConcurrency = 4;
 
-export class SlackExporter {
-  private options: SlackExporterOptions;
+export class SlackMaxqdaAdapter {
+  private options: SlackMaxqdaAdapterOptions;
 
-  constructor(options: SlackExporterOptions) {
+  constructor(options: SlackMaxqdaAdapterOptions) {
     this.options = {
       concurrency: 4,
       ...options,
@@ -130,10 +130,10 @@ export class SlackExporter {
 }
 
 /**
- * Convenience function to create a new SlackExporter instance
+ * Convenience function to create a new SlackMaxqdaAdapter instance
  */
-export function createSlackExporter(
-  options: SlackExporterOptions
-): SlackExporter {
-  return new SlackExporter(options);
+export function createSlackMaxqdaAdapter(
+  options: SlackMaxqdaAdapterOptions
+): SlackMaxqdaAdapter {
+  return new SlackMaxqdaAdapter(options);
 }

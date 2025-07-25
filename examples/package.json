@@ -1,7 +1,7 @@
 {
-  "name": "slack-exporter-example",
+  "name": "slack-maxqda-adapter-example",
   "version": "1.0.0",
-  "description": "Example usage of slack-exporter library",
+  "description": "Example usage of slack-maxqda-adapter library",
   "main": "library-usage.js",
   "scripts": {
     "dev": "ts-node library-usage.ts",
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "dotenv": "^17.2.0",
-    "slack-exporter": "file:.."
+    "slack-maxqda-adapter": "file:.."
   },
   "devDependencies": {
     "@types/node": "^22.15.23",

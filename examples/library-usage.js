@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var slack_exporter_1 = require("slack-exporter");
+var slack_maxqda_adapter_1 = require("slack-maxqda-adapter");
 var dotenv = require("dotenv");
 var yargs_1 = require("yargs");
 var helpers_1 = require("yargs/helpers");
@@ -84,7 +84,7 @@ function main() {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    exporter = new slack_exporter_1.SlackExporter({
+                    exporter = new slack_maxqda_adapter_1.SlackMaxqdaAdapter({
                         token: process.env.SLACK_API_TOKEN || "your-slack-api-token",
                         concurrency: args.concurrency,
                     });

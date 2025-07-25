@@ -2,7 +2,7 @@
 export * from '../types';
 
 // Library-specific types
-export interface SlackExporterOptions {
+export interface SlackMaxqdaAdapterOptions {
   /** Slack API token */
   token: string;
   /** Number of concurrent processes for message processing */

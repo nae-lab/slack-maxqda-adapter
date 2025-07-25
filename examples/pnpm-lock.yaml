@@ -11,7 +11,7 @@ importers:
       dotenv:
         specifier: ^17.2.0
         version: 17.2.0
-      slack-exporter:
+      slack-maxqda-adapter:
         specifier: file:..
         version: file:..
     devDependencies:
@@ -503,7 +503,7 @@ packages:
     resolution: {integrity: sha512-kUMbT1oBJCpgrnKoSr0o6wPtvRWT9W9UKvGLwfJYO2WuahZRHOpEyL1ckyMGgMWh0UdpmaoFqKKD29WTomNEGA==}
     engines: {node: '>=8'}
 
-  slack-exporter@file:..:
+  slack-maxqda-adapter@file:..:
     resolution: {directory: .., type: directory}
     hasBin: true
 
@@ -1038,7 +1038,7 @@ snapshots:
     dependencies:
       unicode-emoji-modifier-base: 1.0.0
 
-  slack-exporter@file:..:
+  slack-maxqda-adapter@file:..:
     dependencies:
       '@slack/web-api': 7.9.3
       '@supercharge/promise-pool': 3.2.0

@@ -1,4 +1,4 @@
-import { SlackExporter } from "slack-exporter";
+import { SlackMaxqdaAdapter } from "slack-maxqda-adapter";
 import * as dotenv from "dotenv";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -44,8 +44,8 @@ const args = yargs(hideBin(process.argv))
   .parseSync();
 
 async function main() {
-  // Initialize the SlackExporter with your Slack API token
-  const exporter = new SlackExporter({
+  // Initialize the SlackMaxqdaAdapter with your Slack API token
+  const exporter = new SlackMaxqdaAdapter({
     token: process.env.SLACK_API_TOKEN || "your-slack-api-token",
     concurrency: args.concurrency,
   });

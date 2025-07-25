@@ -9,17 +9,17 @@ Export Slack messages to DOCX and Markdown formats.
 ### As a Library
 
 ```sh
-pnpm add slack-exporter
+pnpm add slack-maxqda-adapter
 # or
-npm install slack-exporter
+npm install slack-maxqda-adapter
 ```
 
 ### As a CLI Tool
 
 ```sh
-pnpm add -g slack-exporter
+pnpm add -g slack-maxqda-adapter
 # or
-npm install -g slack-exporter
+npm install -g slack-maxqda-adapter
 ```
 
 ## Usage
@@ -27,9 +27,9 @@ npm install -g slack-exporter
 ### Library Usage
 
 ```typescript
-import { SlackExporter } from 'slack-exporter';
+import { SlackMaxqdaAdapter } from 'slack-maxqda-adapter';
 
-const exporter = new SlackExporter({
+const exporter = new SlackMaxqdaAdapter({
   token: 'your-slack-api-token',
   concurrency: 4, // Optional: Number of concurrent processes
 });
@@ -80,7 +80,7 @@ export SLACK_API_TOKEN=your_slack_api_token
 # or create a .env file with SLACK_API_TOKEN=your_slack_api_token
 
 # Export messages
-slack-exporter -c CHANNEL_ID -s 2024-04-01 -e 2024-04-30 -f docx
+slack-maxqda-adapter -c CHANNEL_ID -s 2024-04-01 -e 2024-04-30 -f docx
 ```
 
 #### CLI Options
@@ -95,12 +95,12 @@ slack-exporter -c CHANNEL_ID -s 2024-04-01 -e 2024-04-30 -f docx
 
 ## API Reference
 
-### SlackExporter Class
+### SlackMaxqdaAdapter Class
 
 #### Constructor
 
 ```typescript
-new SlackExporter(options: SlackExporterOptions)
+new SlackMaxqdaAdapter(options: SlackMaxqdaAdapterOptions)
 ```
 
 **Options:**
@@ -135,7 +135,7 @@ Get channel name by ID.
 ### Types
 
 ```typescript
-interface SlackExporterOptions {
+interface SlackMaxqdaAdapterOptions {
   token: string;
   concurrency?: number;
 }
@@ -193,8 +193,8 @@ interface ExportResult {
 ### Setup
 
 ```sh
-git clone https://github.com/your-org/slack-exporter.git
-cd slack-exporter
+git clone https://github.com/your-org/slack-maxqda-adapter.git
+cd slack-maxqda-adapter
 pnpm install
 ```
 

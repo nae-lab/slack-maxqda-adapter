@@ -6,7 +6,7 @@
   "module": "dist/lib/index.js",
   "types": "dist/lib/index.d.ts",
   "bin": {
-    "slack-exporter": "dist/main.js"
+    "slack-maxqda-adapter": "dist/main.js"
   },
   "files": [
     "dist",
