@@ -1,5 +1,5 @@
 {
-  "name": "slack-exporter",
+  "name": "slack-maxqda-adapter",
   "version": "2.1.4",
   "description": "Export Slack messages to DOCX and Markdown formats",
   "main": "dist/lib/index.js",
