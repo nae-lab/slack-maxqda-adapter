@@ -129,15 +129,25 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# artifact files
+# artifact files (output files, not documentation)
 *.docx
 *.rtf
 *.pdf
 *.html
-*.txt
-*.md
+output/*.txt
+output/*.md
+output/*.docx
+output/*.rtf
+output/*.pdf
+output/*.html
+examples/output/*.md
+examples/output/*.docx
+examples/output/*.rtf
+examples/output/*.pdf
+examples/output/*.html
 !README.md
 !README.ja.md
+!docs/*.md
 references
 files
 .cursor/rules/derived-cursor-rules.mdc
