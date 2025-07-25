@@ -1,5 +1,14 @@
-import { slackClient } from "./config";
+import { getSlackClient, isSlackClientInitialized } from "./lib/config";
+import { slackClient as fallbackSlackClient } from "./config";
 import { MessageElement, MessagesResult } from "./types";
+
+// Get the appropriate Slack client (library or fallback)
+function getClient() {
+  if (isSlackClientInitialized()) {
+    return getSlackClient();
+  }
+  return fallbackSlackClient;
+}
 
 // Add this function to export the token for file downloads
 export function getSlackToken(): string {
@@ -14,7 +23,7 @@ export async function retrieveMessages(
   cursor?: string
 ): Promise<MessagesResult> {
   try {
-    const result = await slackClient.conversations.history({
+    const result = await getClient().conversations.history({
       channel: channelId,
       oldest: oldest.toString(),
       latest: latest.toString(),
@@ -27,6 +36,25 @@ export async function retrieveMessages(
       return { messages: [], result };
     }
   } catch (error: any) {
+    // エラーの詳細情報をダンプ
+    console.error("Slack API Error Details:");
+    console.error("Error:", error);
+    console.error("Error Code:", error.code);
+    console.error("Error Message:", error.message);
+    if (error.data) {
+      console.error("Response Data:", JSON.stringify(error.data, null, 2));
+    }
+    if (error.response_metadata) {
+      console.error(
+        "Response Metadata:",
+        JSON.stringify(error.response_metadata, null, 2)
+      );
+    }
+    // エラーオブジェクトの全プロパティをダンプ
+    console.error(
+      "Full Error Object:",
+      JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
+    );
     throw error;
   }
 }
@@ -36,7 +64,7 @@ export async function retrieveThreadMessages(
   threadTs: string
 ): Promise<MessageElement[]> {
   try {
-    const result = await slackClient.conversations.replies({
+    const result = await getClient().conversations.replies({
       channel: channelId,
       ts: threadTs,
       limit: 1000,
@@ -47,6 +75,25 @@ export async function retrieveThreadMessages(
       return [];
     }
   } catch (error: any) {
+    // エラーの詳細情報をダンプ
+    console.error("Slack API Error Details (retrieveThreadMessages):");
+    console.error("Error:", error);
+    console.error("Error Code:", error.code);
+    console.error("Error Message:", error.message);
+    if (error.data) {
+      console.error("Response Data:", JSON.stringify(error.data, null, 2));
+    }
+    if (error.response_metadata) {
+      console.error(
+        "Response Metadata:",
+        JSON.stringify(error.response_metadata, null, 2)
+      );
+    }
+    // エラーオブジェクトの全プロパティをダンプ
+    console.error(
+      "Full Error Object:",
+      JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
+    );
     throw error;
   }
 }
@@ -56,16 +103,33 @@ export async function getUserName(userId: string | undefined) {
     return "Unknown User";
   }
 
-  const userInfo = await slackClient.users.info({
-    user: userId,
-  });
-  return (
-    userInfo.user?.profile?.real_name_normalized ||
-    userInfo.user?.profile?.real_name ||
-    userInfo.user?.real_name ||
-    userInfo.user?.profile?.display_name ||
-    userId
-  );
+  try {
+    const userInfo = await getClient().users.info({
+      user: userId,
+    });
+    return (
+      userInfo.user?.profile?.real_name_normalized ||
+      userInfo.user?.profile?.real_name ||
+      userInfo.user?.real_name ||
+      userInfo.user?.profile?.display_name ||
+      userId
+    );
+  } catch (error: any) {
+    // エラーの詳細情報をダンプ
+    console.error("Slack API Error Details (getUserName):");
+    console.error("Error:", error);
+    if (error.data) {
+      console.error("Response Data:", JSON.stringify(error.data, null, 2));
+    }
+    if (error.response_metadata) {
+      console.error(
+        "Response Metadata:",
+        JSON.stringify(error.response_metadata, null, 2)
+      );
+    }
+    // エラーが発生してもユーザーIDを返す
+    return userId;
+  }
 }
 
 export async function fetchChannelMessages(channelId: string, date?: string) {
@@ -222,7 +286,7 @@ export async function fetchChannelMessagesForDateRange(
 // New helper to fetch workspace URL using slackClient
 export async function fetchWorkspaceUrl(): Promise<string> {
   // Use slackClient exposed from config.ts
-  const response = await slackClient.team.info();
+  const response = await getClient().team.info();
   const domain =
     response.team && response.team.domain ? response.team.domain : "default";
   return `https://${domain}.slack.com`;
@@ -254,19 +318,65 @@ export async function generateSlackMessageUrl(
 }
 
 export async function getChannelName(channelId: string): Promise<string> {
-  const info = await slackClient.conversations.info({ channel: channelId });
-  return info.ok && info.channel && info.channel.name
-    ? info.channel.name
-    : channelId;
+  try {
+    const info = await getClient().conversations.info({ channel: channelId });
+    return info.ok && info.channel && info.channel.name
+      ? info.channel.name
+      : channelId;
+  } catch (error: any) {
+    // エラーの詳細情報をダンプ
+    console.error("Slack API Error Details (getChannelName):");
+    console.error("Error:", error);
+    if (error.data) {
+      console.error("Response Data:", JSON.stringify(error.data, null, 2));
+    }
+    if (error.response_metadata) {
+      console.error(
+        "Response Metadata:",
+        JSON.stringify(error.response_metadata, null, 2)
+      );
+    }
+    // チャンネル名が取得できない場合は、チャンネルIDをそのまま返す
+    console.warn(
+      `Could not get channel name for ${channelId}, using channel ID as fallback`
+    );
+    return channelId;
+  }
+}
+
+// 利用可能なチャンネル一覧を取得する関数を追加
+export async function getAvailableChannels(): Promise<
+  Array<{ id: string; name: string; is_private: boolean }>
+> {
+  try {
+    const result = await getClient().conversations.list({
+      types: "public_channel,private_channel",
+      limit: 1000,
+    });
+
+    if (result.ok && result.channels) {
+      return result.channels.map((channel) => ({
+        id: channel.id || "",
+        name: channel.name || "",
+        is_private: channel.is_private || false,
+      }));
+    }
+    return [];
+  } catch (error: any) {
+    console.error("Error fetching available channels:", error);
+    return [];
+  }
 }
 
 /**
  * ユーザーグループIDからグループ名を取得する
- * 
+ *
  * @param usergroupId ユーザーグループID（S0XXXXXXXX形式）
  * @returns グループ名またはID（取得できない場合）
  */
-export async function getUserGroupName(usergroupId: string | undefined): Promise<string> {
+export async function getUserGroupName(
+  usergroupId: string | undefined
+): Promise<string> {
   if (!usergroupId) {
     return "Unknown Group";
   }
@@ -278,16 +388,18 @@ export async function getUserGroupName(usergroupId: string | undefined): Promise
 
   try {
     // ユーザーグループ一覧を取得
-    const response = await slackClient.usergroups.list();
-    
+    const response = await getClient().usergroups.list();
+
     if (response.ok && response.usergroups) {
       // 指定されたIDのユーザーグループを検索
-      const usergroup = response.usergroups.find(group => group.id === usergroupId);
-      
+      const usergroup = response.usergroups.find(
+        (group: any) => group.id === usergroupId
+      );
+
       // グループが見つかった場合は名前を返す、なければIDをそのまま返す
       return usergroup?.name || usergroupId;
     }
-    
+
     return usergroupId;
   } catch (error) {
     console.error(`Error fetching usergroup info for ${usergroupId}:`, error);
