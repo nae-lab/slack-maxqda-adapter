@@ -10,35 +10,35 @@ import path from 'path';
 dotenv.config();
 
 const argv = yargs(hideBin(process.argv))
-  .option('channelId', {
-    alias: 'c',
-    type: 'string',
-    description: 'The ID of the channel to fetch messages from',
+  .option("channelId", {
+    alias: "c",
+    type: "string",
+    description: "The ID of the channel to fetch messages from",
     demandOption: true,
   })
-  .option('startDate', {
-    alias: 's',
-    type: 'string',
-    description: 'Start date to fetch messages from (YYYY-MM-DD)',
+  .option("startDate", {
+    alias: "s",
+    type: "string",
+    description: "Start date to fetch messages from (YYYY-MM-DD)",
     demandOption: true,
   })
-  .option('endDate', {
-    alias: 'e',
-    type: 'string',
-    description: 'End date to fetch messages to (YYYY-MM-DD)',
+  .option("endDate", {
+    alias: "e",
+    type: "string",
+    description: "End date to fetch messages to (YYYY-MM-DD)",
   })
-  .option('format', {
-    alias: 'f',
-    type: 'string',
-    choices: ['docx', 'md'] as const,
-    default: 'docx' as const,
-    description: 'Output format (docx or md)',
+  .option("format", {
+    alias: "f",
+    type: "string",
+    choices: ["docx", "md"] as const,
+    default: "docx" as const,
+    description: "Output format (docx or md)",
   })
-  .option('concurrency', {
-    alias: 'p',
-    type: 'number',
+  .option("concurrency", {
+    alias: "p",
+    type: "number",
     default: 4,
-    description: '並列処理の同時実行数',
+    description: "Number of concurrent requests to Slack API",
   })
   .parseSync();
 
