@@ -6,7 +6,7 @@ import {
   getUserName,
   generateSlackMessageUrl,
 } from "../slack-client";
-import { ensureDirectoryExists } from "../config";
+import { ensureDirectoryExists } from "../../cli-config";
 import { formatTimestamp } from "../utils/date-utils";
 import { processMessageText } from "./processors/text-processor";
 import { processMessageBlocks } from "./processors/block-processor";

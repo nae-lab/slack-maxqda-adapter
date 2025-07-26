@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// Register path mapping for runtime
+import 'tsconfig-paths/register';
+
 import dotenv from "dotenv";
 dotenv.config({
   override: true,
@@ -9,13 +12,22 @@ import { args } from "./args";
 import {
   fetchChannelMessagesForDateRange,
   getChannelName,
-} from "./slack-client";
-import { exportToWordDocument } from "./docx-formatter";
-import { exportToMarkdown } from "./markdown/markdown-formatter";
+} from "./lib/slack-client";
+import { initializeSlackClient } from "./lib/config";
+import { exportToWordDocument } from "./lib/docx-formatter";
+import { exportToMarkdown } from "./lib/markdown/markdown-formatter";
 import path from "path";
-import { getChannelOutputDir, ensureDirectoryExists } from "./config";
+import { getChannelOutputDir, ensureDirectoryExists } from "./cli-config";
 
 async function main() {
+  // Initialize Slack client with token from environment
+  const token = process.env.SLACK_API_TOKEN;
+  if (!token) {
+    console.error("SLACK_API_TOKEN environment variable is required");
+    process.exit(1);
+  }
+  initializeSlackClient(token);
+
   // Set end date equal to start date if not provided (single day)
   const startDate = args.startDate;
   const endDate = args.endDate || startDate;

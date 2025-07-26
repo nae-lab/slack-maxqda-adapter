@@ -6,10 +6,10 @@ import {
   getChannelName,
   getAvailableChannels,
   getCustomEmoji,
-} from "../slack-client";
-import { exportToWordDocument } from "../docx-formatter";
-import { exportToMarkdown } from "../markdown/markdown-formatter";
-import { ensureDirectoryExists } from "../config";
+} from "./slack-client";
+import { exportToWordDocument } from "./docx-formatter";
+import { exportToMarkdown } from "./markdown/markdown-formatter";
+import { ensureDirectoryExists } from "../cli-config";
 
 // Store concurrency setting for formatters
 let currentConcurrency = 4;

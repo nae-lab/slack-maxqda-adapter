@@ -1,18 +1,23 @@
-import { getSlackClient, isSlackClientInitialized } from "./lib/config";
-import { slackClient as fallbackSlackClient } from "./config";
+import { getSlackClient, isSlackClientInitialized } from "./config";
 import { MessageElement, MessagesResult } from "./types";
 
-// Get the appropriate Slack client (library or fallback)
+// Get the Slack client (library only)
 function getClient() {
-  if (isSlackClientInitialized()) {
-    return getSlackClient();
+  if (!isSlackClientInitialized()) {
+    throw new Error('Slack client not initialized. Call initializeSlackClient() with your token first.');
   }
-  return fallbackSlackClient;
+  return getSlackClient();
 }
 
 // Add this function to export the token for file downloads
 export function getSlackToken(): string {
-  // Return the token from environment or wherever you're storing it
+  // If client is initialized, get token from the client instance
+  if (isSlackClientInitialized()) {
+    const client = getSlackClient();
+    // @ts-ignore - access private token property for file downloads
+    return client.token || "";
+  }
+  // Fall back to environment variable
   return process.env.SLACK_API_TOKEN || "";
 }
 

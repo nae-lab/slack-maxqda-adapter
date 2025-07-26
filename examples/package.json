@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "dotenv": "^17.2.0",
-    "slack-maxqda-adapter": "file:.."
+    "slack-maxqda-adapter": "link:.."
   },
   "devDependencies": {
     "@types/node": "^22.15.23",

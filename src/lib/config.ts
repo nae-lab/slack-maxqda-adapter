@@ -25,4 +25,4 @@ export function getSlackClient(): WebClient {
  */
 export function isSlackClientInitialized(): boolean {
   return slackClient !== null;
-} 
+}

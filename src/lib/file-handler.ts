@@ -4,8 +4,14 @@ import axios from "axios";
 import { SlackFile } from "./types";
 import { File as SharedPublicFile } from "@slack/web-api/dist/types/response/FilesSharedPublicURLResponse";
 import { getSlackToken } from "./slack-client";
-import { slackClient, getFilesDir, ensureDirectoryExists } from "./config";
 
+// Helper function to ensure directory exists
+function ensureDirectoryExists(dirPath: string): string {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+  return dirPath;
+}
 
 // Helper function to construct public file URL from permalink_public
 function constructFileUrl(sharedFile: SharedPublicFile): string | null {
@@ -49,16 +55,23 @@ function constructFileUrl(sharedFile: SharedPublicFile): string | null {
 // Download file from Slack
 export async function downloadSlackFile(
   file: SlackFile,
-  channelName: string = ""
+  channelName: string = "",
+  outputDir?: string
 ): Promise<string> {
-  const outputDir = ensureDirectoryExists(getFilesDir(channelName));
+  // Use provided outputDir, or default to "./files" (optionally with channelName subdirectory)
+  const baseOutputDir = outputDir || "./files";
+  const finalOutputDir = channelName 
+    ? path.join(baseOutputDir, channelName)
+    : baseOutputDir;
+  
+  ensureDirectoryExists(finalOutputDir);
 
   // Generate a unique filename
   const timestamp = Date.now();
   const safeFileName = `${timestamp}-${file.id}-${
     file.name?.replace(/[\/\\?%*:|"<>]/g, "_") || "unnamed"
   }`;
-  const outputPath = path.join(outputDir, safeFileName);
+  const outputPath = path.join(finalOutputDir, safeFileName);
 
   // Get the Slack token from environment or parameter
   const slackToken = getSlackToken();

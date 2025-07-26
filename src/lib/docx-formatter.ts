@@ -10,15 +10,15 @@ import {
   createDateHeadingParagraph,
   createPageBreakParagraph,
 } from "./docx/paragraph-formatters";
-import { ensureDirectoryExists } from "./config";
-import { args } from "./args";
+import { ensureDirectoryExists } from "../cli-config";
+import { args } from "../args";
 
 // Function to get concurrency setting (library or args)
 function getConcurrency(): number {
   try {
     // Try to use library setting first
-    const { SlackExporter } = require("./lib/slack-exporter");
-    return SlackExporter.getConcurrency();
+    const { SlackMaxqdaAdapter } = require("./slack-exporter");
+    return SlackMaxqdaAdapter.getConcurrency();
   } catch {
     // Fallback to args if library not available
     return args.concurrency;
