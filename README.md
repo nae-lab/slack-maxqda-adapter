@@ -4,48 +4,25 @@ Export Slack messages to DOCX and Markdown formats.
 
 日本語版 [README.ja.md](./README.ja.md)
 
-## Installation
-
-### As a Library
-
-```sh
-pnpm add slack-maxqda-adapter
-# or
-npm install slack-maxqda-adapter
-```
-
-### As a CLI Tool
-
-```sh
-pnpm add -g slack-maxqda-adapter
-# or
-npm install -g slack-maxqda-adapter
-```
-
-## Usage
-
-### Library Usage
-
 ```typescript
-import { SlackMaxqdaAdapter } from 'slack-maxqda-adapter';
+// Export multiple channels
+const multipleResults = await exporter.exportMultiple([
+  {
+    channelId: 'C1234567890',
+    startDate: '2024-04-01',
+    format: 'docx',
+    outputPath: './output/channel1.docx',
+  },
+  {
+    channelId: 'C0987654321',
+    startDate: '2024-04-01',
+    format: 'md',
+    outputPath: './output/channel2.md',
+  },
+]);
+```
 
-const exporter = new SlackMaxqdaAdapter({
-  token: 'your-slack-api-token',
-  concurrency: 4, // Optional: Number of concurrent processes
-});
-
-// Export to DOCX
-const result = await exporter.export({
-  channelId: 'C1234567890',
-  startDate: '2024-04-01',
-  endDate: '2024-04-30', // Optional: defaults to startDate
-  format: 'docx',
-  outputPath: './output/channel-messages.docx',
-});
-
-console.log(`Exported ${result.messageCount} messages to ${result.filePath}`);
-
-// Export to Markdown
+## API Reference
 const markdownResult = await exporter.export({
   channelId: 'C1234567890',
   startDate: '2024-04-01',
@@ -70,28 +47,6 @@ const multipleResults = await exporter.exportMultiple([
 ]);
 ```
 
-### CLI Usage
-
-#### Quick Start
-
-```sh
-# Set your Slack API token
-export SLACK_API_TOKEN=your_slack_api_token
-# or create a .env file with SLACK_API_TOKEN=your_slack_api_token
-
-# Export messages
-slack-maxqda-adapter -c CHANNEL_ID -s 2024-04-01 -e 2024-04-30 -f docx
-```
-
-#### CLI Options
-
-| Option | Short | Description | Required | Default |
-|--------|--------|-------------|----------|---------|
-| `--channelId` | `-c` | Slack channel ID | Yes | - |
-| `--startDate` | `-s` | Start date (YYYY-MM-DD) | Yes | - |
-| `--endDate` | `-e` | End date (YYYY-MM-DD) | No | Same as start date |
-| `--format` | `-f` | Output format (docx or md) | No | docx |
-| `--concurrency` | `-p` | Number of concurrent processes | No | 4 |
 
 ## API Reference
 
@@ -235,10 +190,4 @@ MIT
 1. **Channel not found**: Verify the channel ID and ensure the bot has access to the channel
 2. **Invalid token**: Check that your Slack API token is correct and has the required scopes
 3. **Rate limiting**: The tool automatically handles rate limits, but you may need to reduce concurrency for very large exports
-
-### Performance Tips
-
-- Adjust the `concurrency` setting based on your system and network capabilities
-- For large date ranges, consider splitting into smaller batches
-- DOCX exports are more resource-intensive than Markdown exports
 
