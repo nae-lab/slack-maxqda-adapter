@@ -1,5 +1,6 @@
 import { Paragraph } from "docx";
-import { FileElement, toSlackFile } from "../../types";
+import { FileElement, toSlackFile, LogCallback } from "../../types";
+import { ProgressManager } from "../../progress-manager";
 import { downloadSlackFile } from "../../file-handler";
 import {
   createFileLinkParagraph,
@@ -25,9 +26,12 @@ export async function addFilesParagraphs(
     channelName?: string;
     filesSubDir?: string;
     docxDir?: string;
+    progressManager?: ProgressManager;
+    onLog?: LogCallback;
+    fileCounter?: { processed: number; increment: () => void };
   } = {}
 ): Promise<void> {
-  const { indent = {}, channelName = "", filesSubDir, docxDir } = options;
+  const { indent = {}, channelName = "", filesSubDir, docxDir, progressManager, onLog, fileCounter } = options;
 
   for (const file of files) {
     try {
@@ -41,10 +45,10 @@ export async function addFilesParagraphs(
 
       if (file.mimetype && file.mimetype.startsWith("image/")) {
         // 画像ファイルの処理
-        await processImageFile(paragraphs, file, channelName, indent, filesSubDir, docxDir);
+        await processImageFile(paragraphs, file, channelName, indent, filesSubDir, docxDir, progressManager, onLog, fileCounter);
       } else {
         // その他の添付ファイルの処理
-        await processNonImageFile(paragraphs, file, channelName, indent, filesSubDir, docxDir);
+        await processNonImageFile(paragraphs, file, channelName, indent, filesSubDir, docxDir, progressManager, onLog, fileCounter);
       }
     } catch (error) {
       console.error("Error processing file:", error);
@@ -59,12 +63,15 @@ async function processNonImageFile(
   channelName: string = "",
   indent: Record<string, any> = {},
   filesSubDir?: string,
-  docxDir?: string
+  docxDir?: string,
+  progressManager?: ProgressManager,
+  onLog?: LogCallback,
+  fileCounter?: { processed: number; increment: () => void }
 ): Promise<void> {
   try {
     // Slackファイルをダウンロード
     const slackFile = toSlackFile(file);
-    const filePath = await downloadSlackFile(slackFile, channelName, filesSubDir);
+    const filePath = await downloadSlackFile(slackFile, channelName, filesSubDir, progressManager, onLog, fileCounter);
 
     // ローカルファイルの場合は相対パスリンクを作成、リモートの場合はそのまま
     let linkUrl = filePath;
@@ -102,12 +109,15 @@ async function processImageFile(
   channelName: string = "",
   indent: Record<string, any> = {},
   filesSubDir?: string,
-  docxDir?: string
+  docxDir?: string,
+  progressManager?: ProgressManager,
+  onLog?: LogCallback,
+  fileCounter?: { processed: number; increment: () => void }
 ): Promise<void> {
   try {
     // Slackファイルをダウンロード
     const slackFile = toSlackFile(file);
-    const filePath = await downloadSlackFile(slackFile, channelName, filesSubDir);
+    const filePath = await downloadSlackFile(slackFile, channelName, filesSubDir, progressManager, onLog, fileCounter);
 
     // 画像タイトルを追加
     if (file.title || file.name) {

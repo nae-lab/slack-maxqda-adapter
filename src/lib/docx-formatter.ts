@@ -3,26 +3,20 @@ import { PromisePool } from "@supercharge/promise-pool";
 import { Packer } from "docx";
 import * as fs from "fs";
 import path from "path";
-import { MessageElement } from "./types";
+import { MessageElement, LogCallback } from "./types";
+import { ProgressManager } from "./progress-manager";
 import { retrieveThreadMessages } from "./slack-client";
 import { createMessageParagraphs } from "./docx/message-formatter";
 import {
   createDateHeadingParagraph,
   createPageBreakParagraph,
 } from "./docx/paragraph-formatters";
-import { ensureDirectoryExists } from "../cli-config";
-import { args } from "../args";
+import { ensureDirectoryExists } from "./utils/directory-utils";
 
-// Function to get concurrency setting (library or args)
+// Function to get concurrency setting (library only)
 function getConcurrency(): number {
-  try {
-    // Try to use library setting first
-    const { SlackMaxqdaAdapter } = require("./slack-exporter");
-    return SlackMaxqdaAdapter.getConcurrency();
-  } catch {
-    // Fallback to args if library not available
-    return args.concurrency;
-  }
+  const { SlackMaxqdaAdapter } = require("./slack-exporter");
+  return SlackMaxqdaAdapter.getConcurrency();
 }
 
 // Main export function to create a Word document from Slack messages
@@ -30,10 +24,40 @@ export async function exportToWordDocument(
   messagesByDate: { date: string; messages: MessageElement[] }[],
   channelId: string,
   channelName: string,
-  outputPath: string
+  outputPath: string,
+  progressManager?: ProgressManager,
+  onLog?: LogCallback
 ): Promise<string> {
   const concurrency = getConcurrency();
-  console.log(`メッセージ処理を開始します (並列度: ${concurrency})`);
+  if (onLog) {
+    onLog({ timestamp: new Date(), level: 'info', message: `メッセージ処理を開始します (並列度: ${concurrency})` });
+  }
+
+  // Count total files for progress tracking
+  let totalFiles = 0;
+  for (const day of messagesByDate) {
+    for (const message of day.messages) {
+      if (message.files) {
+        totalFiles += message.files.length;
+      }
+      // Also count files in thread messages
+      if (message.reply_count) {
+        const threadMessages = await retrieveThreadMessages(
+          channelId,
+          message.thread_ts ?? ""
+        );
+        for (let i = 1; i < threadMessages.length; i++) {
+          if (threadMessages[i].files) {
+            totalFiles += threadMessages[i].files?.length || 0;
+          }
+        }
+      }
+    }
+  }
+
+  if (onLog) {
+    onLog({ timestamp: new Date(), level: 'info', message: `Found ${totalFiles} files to download` });
+  }
 
   // Ensure output directory exists
   const outDir = path.dirname(outputPath);
@@ -44,10 +68,21 @@ export async function exportToWordDocument(
   const filesSubDir = path.join(outDir, outputBaseName);
   ensureDirectoryExists(filesSubDir);
 
+  // Create a shared file counter for progress tracking
+  const fileCounter = {
+    processed: 0,
+    increment() {
+      this.processed++;
+      if (progressManager && totalFiles > 0) {
+        progressManager.reportFileDownloadProgress(this.processed, totalFiles);
+      }
+    }
+  };
+
   // Process each day's messages in parallel
   const { results: dayResults } = await PromisePool.withConcurrency(concurrency)
-    .for(messagesByDate.map((item, index) => ({ ...item, index, filesSubDir })))
-    .process(async ({ date, messages, index, filesSubDir }) => {
+    .for(messagesByDate.map((item, index) => ({ ...item, index, filesSubDir, fileCounter })))
+    .process(async ({ date, messages, index, filesSubDir, fileCounter }) => {
       const dayChildren: Paragraph[] = [];
 
       // Add page break between days (except for the first day)
@@ -67,7 +102,10 @@ export async function exportToWordDocument(
           0,
           channelName,
           filesSubDir,
-          outDir
+          outDir,
+          progressManager,
+          onLog,
+          fileCounter
         );
         dayChildren.push(...messageChildren);
 
@@ -86,7 +124,10 @@ export async function exportToWordDocument(
               1,
               channelName,
               filesSubDir,
-              outDir
+              outDir,
+              progressManager,
+              onLog,
+              fileCounter
             );
             dayChildren.push(...threadChildren);
           }
@@ -108,6 +149,14 @@ export async function exportToWordDocument(
     documentChildren.push(...result.paragraphs);
   }
 
+  // Report writing stage now that all content (including files) is processed
+  if (progressManager) {
+    progressManager.reportProgress('writing', 0, 'Generating document...');
+  }
+  if (onLog) {
+    onLog({ timestamp: new Date(), level: 'info', message: 'Generating DOCX document...' });
+  }
+
   // Create the document
   const doc = new Document({
     sections: [
@@ -118,9 +167,20 @@ export async function exportToWordDocument(
     ],
   });
 
+  if (progressManager) {
+    progressManager.reportProgress('writing', 50, 'Writing document to file...');
+  }
+
   // Write the document to file
   const buffer = await Packer.toBuffer(doc);
   fs.writeFileSync(outputPath, buffer);
+
+  if (progressManager) {
+    progressManager.reportProgress('writing', 100, 'Document written successfully');
+  }
+  if (onLog) {
+    onLog({ timestamp: new Date(), level: 'success', message: `Document written to ${outputPath}` });
+  }
 
   return outputPath;
 }

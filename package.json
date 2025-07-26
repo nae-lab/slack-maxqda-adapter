@@ -1,13 +1,10 @@
 {
   "name": "slack-maxqda-adapter",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Export Slack messages to DOCX and Markdown formats",
   "main": "dist/lib/index.js",
   "module": "dist/lib/index.js",
   "types": "dist/lib/index.d.ts",
-  "bin": {
-    "slack-maxqda-adapter": "dist/main.js"
-  },
   "files": [
     "dist",
     "src",
@@ -16,7 +13,6 @@
     "LICENSE"
   ],
   "scripts": {
-    "main": "ts-node src/main.ts",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "prepublishOnly": "npm run build",

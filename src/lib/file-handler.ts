@@ -1,17 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
 import axios from "axios";
-import { SlackFile } from "./types";
+import { SlackFile, LogCallback } from "./types";
+import { ProgressManager } from "./progress-manager";
 import { File as SharedPublicFile } from "@slack/web-api/dist/types/response/FilesSharedPublicURLResponse";
 import { getSlackToken } from "./slack-client";
 
-// Helper function to ensure directory exists
-function ensureDirectoryExists(dirPath: string): string {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-  return dirPath;
-}
+import { ensureDirectoryExists } from "./utils/directory-utils";
 
 // Helper function to construct public file URL from permalink_public
 function constructFileUrl(sharedFile: SharedPublicFile): string | null {
@@ -56,7 +51,10 @@ function constructFileUrl(sharedFile: SharedPublicFile): string | null {
 export async function downloadSlackFile(
   file: SlackFile,
   channelName: string = "",
-  outputDir?: string
+  outputDir?: string,
+  progressManager?: ProgressManager,
+  onLog?: LogCallback,
+  fileCounter?: { processed: number; increment: () => void }
 ): Promise<string> {
   // Use provided outputDir, or default to "./files" 
   const baseOutputDir = outputDir || "./files";
@@ -78,13 +76,20 @@ export async function downloadSlackFile(
     return file.permalink || "";
   }
 
+  // Report progress through file counter (will trigger progress manager)
+  // Don't report here - let the file counter handle it after successful download
+
   // Attempt private URL download
   let downloadSuccess = false;
   for (const url of [file.url_private_download, file.url_private].filter(
     Boolean
   ) as string[]) {
     try {
+      if (onLog) {
+        onLog({ timestamp: new Date(), level: 'info', message: `Trying private download from: ${url}` });
+      }
       console.log(`Trying private download from: ${url}`);
+      
       const headers: Record<string, string> = {};
       // Add authorization for private URLs
       if (url.includes("slack.com")) {
@@ -104,13 +109,25 @@ export async function downloadSlackFile(
         writer.on("finish", () => resolve());
         writer.on("error", reject);
       });
+      
+      if (onLog) {
+        onLog({ timestamp: new Date(), level: 'success', message: `Successfully downloaded file to ${outputPath}` });
+      }
       console.log(`Successfully downloaded file to ${outputPath}`);
+      
+      // Increment file counter to update progress
+      if (fileCounter) {
+        fileCounter.increment();
+      }
+      
       downloadSuccess = true;
       break;
     } catch (err: any) {
-      console.error(
-        `Private download failed using ${url}: ${(err as Error).message}`
-      );
+      const errorMsg = `Private download failed using ${url}: ${(err as Error).message}`;
+      if (onLog) {
+        onLog({ timestamp: new Date(), level: 'warning', message: errorMsg });
+      }
+      console.error(errorMsg);
       // Try next URL if this one fails
     }
   }

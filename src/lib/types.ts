@@ -62,6 +62,10 @@ export interface SlackMaxqdaAdapterOptions {
   token: string;
   /** Number of concurrent processes for message processing */
   concurrency?: number;
+  /** Progress callback function */
+  onProgress?: ProgressCallback;
+  /** Log callback function */
+  onLog?: LogCallback;
 }
 
 export interface ExportOptions {
@@ -87,3 +91,34 @@ export interface ExportResult {
   /** Export format used */
   format: 'docx' | 'md';
 }
+
+export interface ProgressUpdate {
+  /** Current step in the export process */
+  stage: 'fetching' | 'processing' | 'downloading' | 'writing' | 'complete';
+  /** Percentage progress (0-100) */
+  progress: number;
+  /** Human-readable description of current step */
+  message: string;
+  /** Current item being processed (optional) */
+  current?: number;
+  /** Total items to process (optional) */
+  total?: number;
+  /** Detailed progress for sub-operations (e.g., file downloads) */
+  details?: {
+    currentFile?: string;
+    filesCompleted?: number;
+    totalFiles?: number;
+  };
+}
+
+export interface LogEntry {
+  /** Timestamp of the log entry */
+  timestamp: Date;
+  /** Log level */
+  level: 'info' | 'success' | 'warning' | 'error';
+  /** Log message */
+  message: string;
+}
+
+export type ProgressCallback = (update: ProgressUpdate) => void;
+export type LogCallback = (entry: LogEntry) => void;

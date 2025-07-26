@@ -1,5 +1,6 @@
 import { Paragraph } from "docx";
-import { MessageElement, FileElement, Block } from "../types";
+import { MessageElement, FileElement, Block, LogCallback } from "../types";
+import { ProgressManager } from "../progress-manager";
 import { getUserName } from "../slack-client";
 import { replaceMentionToUserName, extractMessageText } from "./text-utils";
 import { generateSlackMessageUrl } from "../slack-client";
@@ -24,7 +25,10 @@ export async function createMessageParagraphs(
   indentLevel: number,
   channelName: string = "",
   filesSubDir?: string,
-  docxDir?: string
+  docxDir?: string,
+  progressManager?: ProgressManager,
+  onLog?: LogCallback,
+  fileCounter?: { processed: number; increment: () => void }
 ): Promise<Paragraph[]> {
   const paragraphs: Paragraph[] = [];
   const username = message.user ? await getUserName(message.user) : "No Name";
@@ -76,6 +80,9 @@ export async function createMessageParagraphs(
       channelName,
       filesSubDir,
       docxDir,
+      progressManager,
+      onLog,
+      fileCounter,
     });
   }
 

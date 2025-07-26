@@ -6,14 +6,17 @@
   "scripts": {
     "dev": "ts-node library-usage.ts",
     "build": "tsc library-usage.ts",
-    "start": "node library-usage.js"
+    "start": "node library-usage.js",
+    "cli": "ts-node cli-example.ts"
   },
   "dependencies": {
     "dotenv": "^17.2.0",
-    "slack-maxqda-adapter": "link:.."
+    "slack-maxqda-adapter": "link:..",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.23",
+    "@types/yargs": "^17.0.33",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }

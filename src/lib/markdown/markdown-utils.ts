@@ -1,5 +1,5 @@
 import path from "path";
-import { ensureDirectoryExists } from "../../cli-config";
+import { ensureDirectoryExists } from "../utils/directory-utils";
 
 /**
  * チャンネルディレクトリのパスを取得
