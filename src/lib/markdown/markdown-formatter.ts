@@ -22,6 +22,15 @@ export async function exportToMarkdown(
 ): Promise<string> {
   let markdownContent = "";
 
+  // Ensure output directory exists
+  const outDir = path.dirname(outputPath);
+  ensureDirectoryExists(outDir);
+  
+  // Create subdirectory for downloaded files (same name as output file without extension)
+  const outputBaseName = path.basename(outputPath, path.extname(outputPath));
+  const filesSubDir = path.join(outDir, outputBaseName);
+  ensureDirectoryExists(filesSubDir);
+
   // Process each day's messages
   for (let i = 0; i < messagesByDate.length; i++) {
     const { date, messages } = messagesByDate[i];
@@ -68,10 +77,6 @@ export async function exportToMarkdown(
     }
   }
 
-  // Ensure output directory exists
-  const outDir = path.dirname(outputPath);
-  ensureDirectoryExists(outDir);
-
   // Write the markdown content to file
   fs.writeFileSync(outputPath, markdownContent, "utf-8");
 
@@ -84,7 +89,7 @@ async function createMessageMarkdown(
   channelId: string,
   indentLevel: number,
   channelName: string = "",
-  outputPath: string
+  markdownOutputPath: string
 ): Promise<string> {
   let markdownContent = "";
   const username = message.user
@@ -121,7 +126,7 @@ async function createMessageMarkdown(
       message.files,
       channelName,
       indentLevel,
-      outputPath
+      markdownOutputPath
     );
   }
 

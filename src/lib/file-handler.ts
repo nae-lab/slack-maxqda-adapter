@@ -58,11 +58,9 @@ export async function downloadSlackFile(
   channelName: string = "",
   outputDir?: string
 ): Promise<string> {
-  // Use provided outputDir, or default to "./files" (optionally with channelName subdirectory)
+  // Use provided outputDir, or default to "./files" 
   const baseOutputDir = outputDir || "./files";
-  const finalOutputDir = channelName 
-    ? path.join(baseOutputDir, channelName)
-    : baseOutputDir;
+  const finalOutputDir = baseOutputDir;
   
   ensureDirectoryExists(finalOutputDir);
 
@@ -117,11 +115,11 @@ export async function downloadSlackFile(
     }
   }
 
-  // 非画像ファイルの場合は常にパーマリンクを使用
-  if (file.mimetype && !file.mimetype.startsWith("image/")) {
-    return file.permalink || `https://slack.com/files/${file.id}`;
-  } else if (downloadSuccess) {
+  // ダウンロードが成功した場合はローカルパスを返す
+  if (downloadSuccess) {
     return outputPath;
   }
+  
+  // ダウンロードが失敗した場合はパーマリンクを返す
   return file.permalink || `https://slack.com/files/${file.id}`;
 }

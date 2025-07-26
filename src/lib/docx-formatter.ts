@@ -35,10 +35,19 @@ export async function exportToWordDocument(
   const concurrency = getConcurrency();
   console.log(`メッセージ処理を開始します (並列度: ${concurrency})`);
 
+  // Ensure output directory exists
+  const outDir = path.dirname(outputPath);
+  ensureDirectoryExists(outDir);
+  
+  // Create subdirectory for downloaded files (same name as output file without extension)
+  const outputBaseName = path.basename(outputPath, path.extname(outputPath));
+  const filesSubDir = path.join(outDir, outputBaseName);
+  ensureDirectoryExists(filesSubDir);
+
   // Process each day's messages in parallel
   const { results: dayResults } = await PromisePool.withConcurrency(concurrency)
-    .for(messagesByDate.map((item, index) => ({ ...item, index })))
-    .process(async ({ date, messages, index }) => {
+    .for(messagesByDate.map((item, index) => ({ ...item, index, filesSubDir })))
+    .process(async ({ date, messages, index, filesSubDir }) => {
       const dayChildren: Paragraph[] = [];
 
       // Add page break between days (except for the first day)
@@ -56,7 +65,9 @@ export async function exportToWordDocument(
           message,
           channelId,
           0,
-          channelName
+          channelName,
+          filesSubDir,
+          outDir
         );
         dayChildren.push(...messageChildren);
 
@@ -73,7 +84,9 @@ export async function exportToWordDocument(
               threadMessages[i],
               channelId,
               1,
-              channelName
+              channelName,
+              filesSubDir,
+              outDir
             );
             dayChildren.push(...threadChildren);
           }
@@ -104,10 +117,6 @@ export async function exportToWordDocument(
       },
     ],
   });
-
-  // Ensure output directory exists
-  const outDir = path.dirname(outputPath);
-  ensureDirectoryExists(outDir);
 
   // Write the document to file
   const buffer = await Packer.toBuffer(doc);

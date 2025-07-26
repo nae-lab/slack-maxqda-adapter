@@ -22,7 +22,9 @@ export async function createMessageParagraphs(
   message: MessageElement,
   channelId: string,
   indentLevel: number,
-  channelName: string = ""
+  channelName: string = "",
+  filesSubDir?: string,
+  docxDir?: string
 ): Promise<Paragraph[]> {
   const paragraphs: Paragraph[] = [];
   const username = message.user ? await getUserName(message.user) : "No Name";
@@ -72,6 +74,8 @@ export async function createMessageParagraphs(
     await addFilesParagraphs(paragraphs, message.files as FileElement[], {
       indent,
       channelName,
+      filesSubDir,
+      docxDir,
     });
   }
 

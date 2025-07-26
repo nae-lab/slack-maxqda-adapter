@@ -51,15 +51,15 @@ async function main() {
     return;
   }
 
-  // Generate filename including the channel name
+  // Generate filename including the channel name and timestamp
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19); // YYYY-MM-DDTHH-MM-SS
   const isSingleDay = startDate === endDate;
   const extension = args.format === "md" ? "md" : "docx";
-  const outputPath = path.join(
-    channelOutDir,
-    isSingleDay
-      ? `${channelName}_${startDate}.${extension}`
-      : `${channelName}_${startDate}--${endDate}.${extension}`
-  );
+  const baseFileName = isSingleDay
+    ? `${channelName}_${startDate}_${timestamp}`
+    : `${channelName}_${startDate}--${endDate}_${timestamp}`;
+  
+  const outputPath = path.join(channelOutDir, `${baseFileName}.${extension}`);
 
   // Create document with messages based on format
   if (args.format === "md") {

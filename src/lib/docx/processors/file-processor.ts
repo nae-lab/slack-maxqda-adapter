@@ -23,9 +23,11 @@ export async function addFilesParagraphs(
   options: {
     indent?: Record<string, any>;
     channelName?: string;
+    filesSubDir?: string;
+    docxDir?: string;
   } = {}
 ): Promise<void> {
-  const { indent = {}, channelName = "" } = options;
+  const { indent = {}, channelName = "", filesSubDir, docxDir } = options;
 
   for (const file of files) {
     try {
@@ -39,21 +41,57 @@ export async function addFilesParagraphs(
 
       if (file.mimetype && file.mimetype.startsWith("image/")) {
         // 画像ファイルの処理
-        await processImageFile(paragraphs, file, channelName, indent);
+        await processImageFile(paragraphs, file, channelName, indent, filesSubDir, docxDir);
       } else {
         // その他の添付ファイルの処理
-        paragraphs.push(
-          createFileLinkParagraph(
-            file.filetype?.toUpperCase() || "File",
-            file.name || file.title || "Unknown",
-            file.permalink || "",
-            indent
-          )
-        );
+        await processNonImageFile(paragraphs, file, channelName, indent, filesSubDir, docxDir);
       }
     } catch (error) {
       console.error("Error processing file:", error);
     }
+  }
+}
+
+// 非画像ファイルを処理する関数
+async function processNonImageFile(
+  paragraphs: Paragraph[],
+  file: FileElement,
+  channelName: string = "",
+  indent: Record<string, any> = {},
+  filesSubDir?: string,
+  docxDir?: string
+): Promise<void> {
+  try {
+    // Slackファイルをダウンロード
+    const slackFile = toSlackFile(file);
+    const filePath = await downloadSlackFile(slackFile, channelName, filesSubDir);
+
+    // ローカルファイルの場合は相対パスリンクを作成、リモートの場合はそのまま
+    let linkUrl = filePath;
+    if (!filePath.startsWith("http") && docxDir) {
+      // ローカルファイルの場合は相対パスを使用
+      linkUrl = path.relative(docxDir, filePath);
+    }
+
+    paragraphs.push(
+      createFileLinkParagraph(
+        file.filetype?.toUpperCase() || "File",
+        file.name || file.title || "Unknown",
+        linkUrl,
+        indent
+      )
+    );
+  } catch (error) {
+    console.error("Error processing non-image file:", error);
+    // エラー時はパーマリンクを使用
+    paragraphs.push(
+      createFileLinkParagraph(
+        file.filetype?.toUpperCase() || "File",
+        file.name || file.title || "Unknown",
+        file.permalink || "",
+        indent
+      )
+    );
   }
 }
 
@@ -62,12 +100,14 @@ async function processImageFile(
   paragraphs: Paragraph[],
   file: FileElement,
   channelName: string = "",
-  indent: Record<string, any> = {}
+  indent: Record<string, any> = {},
+  filesSubDir?: string,
+  docxDir?: string
 ): Promise<void> {
   try {
     // Slackファイルをダウンロード
     const slackFile = toSlackFile(file);
-    const filePath = await downloadSlackFile(slackFile, channelName);
+    const filePath = await downloadSlackFile(slackFile, channelName, filesSubDir);
 
     // 画像タイトルを追加
     if (file.title || file.name) {
@@ -82,6 +122,14 @@ async function processImageFile(
         createFileLinkParagraph("Image", file.name || "Image", filePath, indent)
       );
       return;
+    }
+
+    // ローカルファイルの場合は相対パスリンクも追加
+    if (docxDir) {
+      const linkUrl = path.relative(docxDir, filePath);
+      paragraphs.push(
+        createFileLinkParagraph("Image", file.name || "Image", linkUrl, indent)
+      );
     }
 
     // ローカルファイルの場合は画像を埋め込み
