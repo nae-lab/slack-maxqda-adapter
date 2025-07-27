@@ -57,9 +57,9 @@
     "axios": "^1.9.0",
     "docx": "^9.5.0",
     "emoji-datasource": "^15.1.2",
+    "image-size": "^1.1.1",
     "node-emoji": "^2.2.0",
     "node-fetch": "^3.3.2",
-    "sharp": "^0.33.5",
     "universal-emoji-parser": "^2.0.52",
     "yargs": "^17.7.2"
   }

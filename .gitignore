@@ -152,3 +152,5 @@ references
 files
 .cursor/rules/derived-cursor-rules.mdc
 .specstory/
+examples/output/
+examples/library-usage.js
