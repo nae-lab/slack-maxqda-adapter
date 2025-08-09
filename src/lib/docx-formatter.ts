@@ -63,9 +63,8 @@ export async function exportToWordDocument(
   const outDir = path.dirname(outputPath);
   ensureDirectoryExists(outDir);
   
-  // Create subdirectory for downloaded files (same name as output file without extension)
-  const outputBaseName = path.basename(outputPath, path.extname(outputPath));
-  const filesSubDir = path.join(outDir, outputBaseName);
+  // Create subdirectory for downloaded files named "files"
+  const filesSubDir = path.join(outDir, "files");
   ensureDirectoryExists(filesSubDir);
 
   // Create a shared file counter for progress tracking

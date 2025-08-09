@@ -128,8 +128,18 @@ export class SlackMaxqdaAdapter {
       this.log('info', 'No files to download');
     }
 
-    // Ensure output directory exists
-    ensureDirectoryExists(path.dirname(outputPath));
+    // Create new folder structure: [channel-name]_at_[download-date]
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const folderName = `${channelName}_at_${currentDate}`;
+    const outputDir = path.dirname(outputPath);
+    const newOutputDir = path.join(outputDir, folderName);
+    
+    // Ensure the new folder structure exists
+    ensureDirectoryExists(newOutputDir);
+
+    // Create the new output path inside the folder
+    const fileName = `${folderName}.${format}`;
+    const newOutputPath = path.join(newOutputDir, fileName);
 
     // Export based on format (includes file downloading)
     // Note: Don't report 'writing' stage here as file downloads happen inside the formatter
@@ -140,14 +150,14 @@ export class SlackMaxqdaAdapter {
         dateRangeResults,
         channelId,
         channelName,
-        outputPath
+        newOutputPath
       );
     } else {
       finalOutputPath = await exportToWordDocument(
         dateRangeResults,
         channelId,
         channelName,
-        outputPath,
+        newOutputPath,
         this.progressManager,
         this.onLog?.bind(this)
       );
