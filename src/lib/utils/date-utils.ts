@@ -40,3 +40,29 @@ export function getFormattedDateAndObject(timestamp: string): {
     date,
   };
 }
+
+/**
+ * UNIXタイムスタンプをファイル名用の日付形式（YYYY-MM-DD）にフォーマットする関数
+ * @param timestamp UNIXタイムスタンプ（秒）
+ * @returns YYYY-MM-DD 形式の文字列
+ */
+export function formatDateForFilename(timestamp: number): string {
+  const date = new Date(timestamp * 1000);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * SlackFileからタイムスタンプを取得し、Dateオブジェクトを返す関数
+ * @param file SlackFileオブジェクト
+ * @returns Dateオブジェクトまたはnull（タイムスタンプが利用できない場合）
+ */
+export function getFileTimestampFromSlack(file: { created?: number }): Date | null {
+  if (file.created && typeof file.created === 'number') {
+    return new Date(file.created * 1000);
+  }
+  return null;
+}

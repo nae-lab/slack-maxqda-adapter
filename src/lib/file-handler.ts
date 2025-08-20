@@ -5,6 +5,7 @@ import { SlackFile, LogCallback } from "./types";
 import { ProgressManager } from "./progress-manager";
 import { File as SharedPublicFile } from "@slack/web-api/dist/types/response/FilesSharedPublicURLResponse";
 import { getSlackToken } from "./slack-client";
+import { formatDateForFilename, getFileTimestampFromSlack } from "./utils/date-utils";
 
 import { ensureDirectoryExists } from "./utils/directory-utils";
 
@@ -62,11 +63,13 @@ export async function downloadSlackFile(
   
   ensureDirectoryExists(finalOutputDir);
 
-  // Generate a unique filename
-  const timestamp = Date.now();
-  const safeFileName = `${timestamp}-${file.id}-${
-    file.name?.replace(/[\/\\?%*:|"<>]/g, "_") || "unnamed"
-  }`;
+  // Generate a human-readable filename with format: YYYY-MM-DD_fileId_originalName
+  const fileDate = file.created 
+    ? formatDateForFilename(file.created)
+    : new Date().toISOString().split('T')[0]; // Fallback to today's date
+  
+  const sanitizedName = file.name?.replace(/[\/\\?%*:|"<>]/g, "_") || "unnamed";
+  const safeFileName = `${fileDate}_${file.id}_${sanitizedName}`;
   const outputPath = path.join(finalOutputDir, safeFileName);
 
   // Get the Slack token from environment or parameter
@@ -114,6 +117,22 @@ export async function downloadSlackFile(
         onLog({ timestamp: new Date(), level: 'success', message: `Successfully downloaded file to ${outputPath}` });
       }
       console.log(`Successfully downloaded file to ${outputPath}`);
+      
+      // Set file timestamps to preserve original metadata
+      try {
+        const originalTimestamp = getFileTimestampFromSlack(file);
+        if (originalTimestamp) {
+          await fs.promises.utimes(outputPath, originalTimestamp, originalTimestamp);
+          if (onLog) {
+            onLog({ timestamp: new Date(), level: 'info', message: `Set file timestamp to original creation date: ${originalTimestamp.toISOString()}` });
+          }
+        }
+      } catch (timestampError) {
+        if (onLog) {
+          onLog({ timestamp: new Date(), level: 'warning', message: `Failed to set file timestamp: ${(timestampError as Error).message}` });
+        }
+        console.warn(`Failed to set file timestamp: ${(timestampError as Error).message}`);
+      }
       
       // Increment file counter to update progress
       if (fileCounter) {

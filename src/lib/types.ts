@@ -26,6 +26,7 @@ export interface SlackFile {
   permalink?: string;
   name?: string;
   mimetype?: string;
+  created?: number;
 }
 
 export {
@@ -51,6 +52,7 @@ export function toSlackFile(file: FileElement): SlackFile {
     permalink: file.permalink,
     name: file.name,
     mimetype: file.mimetype,
+    created: file.created,
   };
 }
 
